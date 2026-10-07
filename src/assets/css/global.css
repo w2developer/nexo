@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+
+@theme {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-ring: var(--ring);
+
+    --radius-md: var(--radius);
+}
+
+:root {
+    --background: #ffffff;
+    --foreground: #09090b;
+    --primary: #0000ff;
+    --primary-foreground: #fafafa;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+    --border: #e4e4e7;
+    --ring: #18181b;
+    --radius: 0.5rem;
+}
+
+/* ==========================================
+   Estilização Global do Scrollbar (Discreto)
+   ========================================== */
+
+* {
+    /* Suporte para Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* Suporte para Chrome, Edge e Safari */
+*::-webkit-scrollbar {
+    width: 6px;  /* Espessura do scroll vertical */
+    height: 6px; /* Espessura do scroll horizontal */
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent; /* Fundo transparente para manter a discrição */
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--border); /* Usa a cor de borda do seu tema (cinza bem claro) */
+    border-radius: var(--radius);    /* Deixa as pontas arredondadas */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground); /* Escurece suavemente ao passar o mouse */
+}
