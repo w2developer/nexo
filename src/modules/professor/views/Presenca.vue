@@ -32,7 +32,6 @@
     const termoPesquisa = ref('');
 
     const presencasConfirmadas = ref([]);
-    const backupDatas = ref({});
     
     let realtimeChannel;
 
@@ -45,6 +44,16 @@
     const turnoSelecionado = ref(infoAtual.turno);
     const diaSelecionando = ref(getDiaAtual());
     const horaSelecionada = ref(infoAtual.hora);
+
+    // Pega a presença mais recente do array do histórico
+    const getUltimaPresenca = (registros) => {
+        if (!registros || !Array.isArray(registros) || registros.length === 0) return null;
+        
+        // Extrai as datas, remove vazios e ordena do mais antigo para o mais recente
+        const datas = registros.map(r => r.data_presenca).filter(Boolean).sort();
+        // Retorna a última data do array ordenado
+        return datas[datas.length - 1] || null;
+    };
 
     // Funções de data
     const getHojeString = () => {
@@ -138,47 +147,46 @@
 
     // Ações de Presença
     const togglePresenca = async (item) => {
+        const dataHoje = getHojeString();
         const jaConfirmado = presencasConfirmadas.value.includes(item.id);
-        let novaData = null;
+        const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
 
-        if (jaConfirmado) {
-            novaData = backupDatas.value[item.id] || null;
-        } else {
-            backupDatas.value[item.id] = item.ultima_presenca;
-            novaData = getHojeString();
-        }
-
+        // Atualização Otimista forçando a reatividade do Vue recriando os arrays
         if (jaConfirmado) {
             presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
+            if (alunoIndex !== -1 && alunos.value[alunoIndex].registro_presenca) {
+                alunos.value[alunoIndex].registro_presenca = alunos.value[alunoIndex].registro_presenca.filter(p => p.data_presenca !== dataHoje);
+            }
         } else {
             presencasConfirmadas.value = [...presencasConfirmadas.value, item.id];
-        }
-        
-        const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
-        if (alunoIndex !== -1) {
-            alunos.value[alunoIndex].ultima_presenca = novaData;
+            if (alunoIndex !== -1) {
+                const presencasAntigas = alunos.value[alunoIndex].registro_presenca || [];
+                // Cria um array novo com a presença atualizada
+                alunos.value[alunoIndex].registro_presenca = [...presencasAntigas, { data_presenca: dataHoje }];
+            }
         }
 
         try {
-            const { error } = await supabase
-                .from('matricula')
-                .update({ ultima_presenca: novaData })
-                .eq('id', item.id);
+            if (jaConfirmado) {
+                // Remove a presença de hoje
+                const { error } = await supabase
+                    .from('registro_presenca')
+                    .delete()
+                    .match({ matricula_id: item.id, data_presenca: dataHoje });
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // Adiciona a presença de hoje
+                const { error } = await supabase
+                    .from('registro_presenca')
+                    .insert([{ matricula_id: item.id, data_presenca: dataHoje }]);
 
+                if (error) throw error;
+            }
         } catch (err) {
             console.error("Erro ao salvar presença:", err);
-            
-            if (jaConfirmado) {
-                presencasConfirmadas.value = [...presencasConfirmadas.value, item.id];
-            } else {
-                presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
-            }
-            if (alunoIndex !== -1) {
-                alunos.value[alunoIndex].ultima_presenca = jaConfirmado ? novaData : backupDatas.value[item.id];
-            }
             toast.error("Erro", "Erro de conexão. A marcação foi desfeita.");
+            buscarAlunos(true); // Recarrega para corrigir inconsistência visual
         }
     };
 
@@ -266,15 +274,16 @@
         });
     });
 
-    // Busca de Alunos (Somente Cursando)
+    // Busca de Alunos e Histórico
     const buscarAlunos = async (silencioso = false) => {
         try {
             if (!silencioso) carregandoAlunos.value = true;
             
+            // Faz o join com registro_presenca
             const { data, error: supabaseError } = await supabase
                 .from('matricula')
-                .select('*, aluno(*), curso(*)')
-                .eq('situacao', 'cursando'); // FILTRO APLICADO AQUI
+                .select('*, aluno(*), curso(*), registro_presenca(data_presenca)')
+                .eq('situacao', 'cursando');
 
             if (supabaseError) throw supabaseError;
             
@@ -282,10 +291,11 @@
 
             const dataHojeString = getHojeString();
             
+            // Verifica quem já tem a data de hoje no array de presenças
             presencasConfirmadas.value = data
                 .filter(item => {
-                    const dt = item.ultima_presenca ? String(item.ultima_presenca).substring(0, 10) : null;
-                    return dt === dataHojeString;
+                    if (!item.registro_presenca) return false;
+                    return item.registro_presenca.some(p => p.data_presenca === dataHojeString);
                 })
                 .map(item => item.id);
 
@@ -299,10 +309,13 @@
     onMounted(() => {
         buscarAlunos();
 
-        // Recarrega silenciosamente quando houver mudanças no DB
+        // Escuta mudanças nas duas tabelas
         realtimeChannel = supabase
             .channel('matricula_changes')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matricula' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
+                buscarAlunos(true); 
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'registro_presenca' }, () => {
                 buscarAlunos(true); 
             })
             .subscribe((status) => {
@@ -407,9 +420,9 @@
                                     
                                     <TableCell 
                                         class="text-center hidden min-[550px]:table-cell font-medium transition-colors"
-                                        :class="isDuasSemanasAtras(item.ultima_presenca) ? 'text-red-500' : 'text-muted-foreground'"
+                                        :class="isDuasSemanasAtras(getUltimaPresenca(item.registro_presenca)) ? 'text-red-500' : 'text-muted-foreground'"
                                     >
-                                        {{ formatarDataBR(item.ultima_presenca) }}
+                                        {{ formatarDataBR(getUltimaPresenca(item.registro_presenca)) }}
                                     </TableCell>
                                     
                                     <TableCell class="pr-4 py-2">

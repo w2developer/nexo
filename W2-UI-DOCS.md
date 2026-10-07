@@ -1,3 +1,5 @@
+# Teste
+
 # Contexto do Sistema: W2 UI Kit (Vue 3 + Tailwind CSS 4)
 
 <!-- npm install clsx tailwind-merge @lucide/vue -->
