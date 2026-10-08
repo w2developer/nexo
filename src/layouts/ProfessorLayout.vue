@@ -33,11 +33,11 @@ const navigation = [
         to: '/professor/concluidos',
         icon: ListChecks,
     },
-    {
-        title: 'Mensagens',
-        to: '/professor/mensagens',
-        icon: MessageCircle,
-    },
+    // {
+    //     title: 'Mensagens',
+    //     to: '/professor/mensagens',
+    //     icon: MessageCircle,
+    // },
     {
         title: 'Configurações',
         to: '/professor/configuracoes',

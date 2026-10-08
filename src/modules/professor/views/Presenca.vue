@@ -146,49 +146,57 @@
     };
 
     // Ações de Presença
-    const togglePresenca = async (item) => {
-        const dataHoje = getHojeString();
-        const jaConfirmado = presencasConfirmadas.value.includes(item.id);
-        const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
+	const togglePresenca = async (item) => {
+		const dataHoje = getHojeString();
+		const jaConfirmado = presencasConfirmadas.value.includes(item.id);
+		const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
 
-        // Atualização Otimista forçando a reatividade do Vue recriando os arrays
-        if (jaConfirmado) {
-            presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
-            if (alunoIndex !== -1 && alunos.value[alunoIndex].registro_presenca) {
-                alunos.value[alunoIndex].registro_presenca = alunos.value[alunoIndex].registro_presenca.filter(p => p.data_presenca !== dataHoje);
-            }
-        } else {
-            presencasConfirmadas.value = [...presencasConfirmadas.value, item.id];
-            if (alunoIndex !== -1) {
-                const presencasAntigas = alunos.value[alunoIndex].registro_presenca || [];
-                // Cria um array novo com a presença atualizada
-                alunos.value[alunoIndex].registro_presenca = [...presencasAntigas, { data_presenca: dataHoje }];
-            }
-        }
+		// Atualização Otimista forçando a reatividade do Vue recriando os arrays
+		if (jaConfirmado) {
+			presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
+			if (alunoIndex !== -1 && alunos.value[alunoIndex].registro_presenca) {
+				alunos.value[alunoIndex].registro_presenca = alunos.value[alunoIndex].registro_presenca.filter(p => p.data_presenca !== dataHoje);
+			}
+		} else {
+			presencasConfirmadas.value = [...presencasConfirmadas.value, item.id];
+			if (alunoIndex !== -1) {
+				const presencasAntigas = alunos.value[alunoIndex].registro_presenca || [];
+				// Cria um array novo com a presença atualizada
+				alunos.value[alunoIndex].registro_presenca = [...presencasAntigas, { data_presenca: dataHoje }];
+			}
+		}
 
-        try {
-            if (jaConfirmado) {
-                // Remove a presença de hoje
-                const { error } = await supabase
-                    .from('registro_presenca')
-                    .delete()
-                    .match({ matricula_id: item.id, data_presenca: dataHoje });
+		try {
+			if (jaConfirmado) {
+				// Remove a presença de hoje
+				const { error } = await supabase
+					.from('registro_presenca')
+					.delete()
+					.match({ matricula_id: item.id, data_presenca: dataHoje });
 
-                if (error) throw error;
-            } else {
-                // Adiciona a presença de hoje
-                const { error } = await supabase
-                    .from('registro_presenca')
-                    .insert([{ matricula_id: item.id, data_presenca: dataHoje }]);
+				if (error) throw error;
+			} else {
+				// Adiciona a presença de hoje
+				const { error } = await supabase
+					.from('registro_presenca')
+					.insert([{ matricula_id: item.id, data_presenca: dataHoje }]);
 
-                if (error) throw error;
-            }
-        } catch (err) {
-            console.error("Erro ao salvar presença:", err);
-            toast.error("Erro", "Erro de conexão. A marcação foi desfeita.");
-            buscarAlunos(true); // Recarrega para corrigir inconsistência visual
-        }
-    };
+				if (error) throw error;
+			}
+
+			// A MÁGICA AQUI: Força a atualização da tabela pai (matricula) 
+			// Isso faz o Realtime disparar com certeza absoluta, igual seu código antigo
+			await supabase
+				.from('matricula')
+				.update({ atualizado_em: new Date().toISOString() })
+				.eq('id', item.id);
+
+		} catch (err) {
+			console.error("Erro ao salvar presença:", err);
+			toast.error("Erro", "Erro de conexão. A marcação foi desfeita.");
+			buscarAlunos(true); // Recarrega para corrigir inconsistência visual
+		}
+	};
 
     // Ações de Conclusão
     const abrirModalConcluir = (item) => {
@@ -307,21 +315,18 @@
     };
 
     onMounted(() => {
-        buscarAlunos();
+		buscarAlunos();
 
-        // Escuta mudanças nas duas tabelas
-        realtimeChannel = supabase
-            .channel('matricula_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
-                buscarAlunos(true); 
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'registro_presenca' }, () => {
-                buscarAlunos(true); 
-            })
-            .subscribe((status) => {
-                console.log("Status Realtime:", status);
-            });
-    });
+		// Recarrega silenciosamente quando houver mudanças na matricula
+		realtimeChannel = supabase
+			.channel('matricula_changes')
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
+				buscarAlunos(true); 
+			})
+			.subscribe((status) => {
+				console.log("Status Realtime:", status);
+			});
+	});
 
     onUnmounted(() => {
         if (realtimeChannel) {
