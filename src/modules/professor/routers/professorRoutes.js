@@ -21,6 +21,10 @@ export default [
                 component: () => import('@/modules/professor/views/Configuracoes.vue'),
             },
             {
+                path: 'editar-aluno/:id',
+                component: () => import('@/modules/professor/views/EditarAluno.vue'),
+            },
+            {
                 path: 'mensagens',
                 name: 'professor-mensagens',
                 component: () => import('@/modules/chat/MensagensEquipe.vue'),

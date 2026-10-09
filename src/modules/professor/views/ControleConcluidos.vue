@@ -72,10 +72,10 @@
         const formatado = str.replace('_', ' ');
         
         const configs = {
-            'nao_solicitado': { variant: 'secondary', texto: formatado },
-            'pendente': { variant: 'warning', texto: formatado },
-            'emitido': { variant: 'default', texto: formatado },
-            'entregue': { variant: 'success', texto: formatado }
+            'nao_solicitado': { variant: 'ghost', texto: formatado },
+            'pendente': { variant: 'ghost', texto: formatado },
+            'emitido': { variant: 'ghost', texto: formatado },
+            'entregue': { variant: 'ghost', texto: formatado }
         };
         return configs[str] || configs['nao_solicitado'];
     };

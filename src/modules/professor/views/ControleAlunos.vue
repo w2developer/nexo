@@ -19,6 +19,7 @@
     import TableCell from '@/components/ui/TableCell.vue';
     import TableBody from '@/components/ui/TableBody.vue';
     import TableRow from '@/components/ui/TableRow.vue';
+import router from '@/router';
 
     // --- ESTADOS ---
     const alunos = ref([]);
@@ -80,7 +81,8 @@
     };
 
     const abrirModalEdicaoAluno = (aluno) => {
-        toast.info("Em breve", `Abrir edição do aluno: ${aluno.nome}`);
+        // toast.info("Em breve", `Abrir edição do aluno: ${aluno.nome}`);
+        router.push('/professor/editar-aluno/' + aluno.id)
     };
 
     const abrirModalEdicaoMatricula = (matricula) => {

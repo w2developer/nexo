@@ -441,6 +441,8 @@
                                                 {{ presencasConfirmadas.includes(item.id) ? 'Desfazer' : 'Presença' }}
                                             </Button>
 
+                                            <span>AAAAAA</span>
+
                                             <!-- Menu Dropdown Atualizado -->
                                             <Dropdown>
                                                 <template #trigger>
