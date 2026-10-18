@@ -50,6 +50,11 @@
         enviando.value = false;
     };
 
+    const fecharChateWidget = () => {
+        fecharChat()
+        toggleWidget()
+    }
+
     const formatarHora = (dataString) => {
         if (!dataString) return '';
         return new Date(dataString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -89,7 +94,7 @@
                         <h3 class="font-bold text-slate-800 text-lg">Mensagens</h3>
                         <p class="text-xs text-slate-500">Logado como: {{ currentUser.nome }}</p>
                     </div>
-                    <button @click="toggleWidget" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                    <button @click="toggleWidget" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -99,7 +104,7 @@
                         v-for="colega in colegas" 
                         :key="colega.id"
                         @click="abrirChatCom(colega)"
-                        class="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50/50"
+                        class="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50/50 cursor-pointer"
                     >
                         <div class="relative shrink-0">
                             <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center">
@@ -126,23 +131,29 @@
             <!-- TELA 2: BATE-PAPO REAL -->
             <template v-else>
                 <!-- Cabeçalho do Chat -->
-                <div class="bg-white px-3 py-3 border-b border-slate-100 flex items-center gap-3 shrink-0 shadow-sm z-10">
-                    <button @click="fecharChat" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors shrink-0">
-                        <ChevronLeft class="w-5 h-5" />
-                    </button>
-                    
-                    <div class="relative shrink-0">
-                        <div class="w-10 h-10 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center">
-                            <User class="w-5 h-5" />
+                <div class="bg-white px-3 py-3 border-b border-slate-100 flex justify-between gap-3 shrink-0 shadow-sm z-10">
+                    <div class="flex items-center gap-3 shrink-0">
+                        <button @click="fecharChat" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors shrink-0 cursor-pointer">
+                            <ChevronLeft class="w-5 h-5" />
+                        </button>
+                        
+                        <div class="relative shrink-0">
+                            <div class="w-10 h-10 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center">
+                                <User class="w-5 h-5" />
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col min-w-0">
+                            <h3 class="font-bold text-sm text-slate-800 truncate">{{ colegaAtivo.nome }}</h3>
+                            <span class="text-[11px] font-medium transition-colors duration-300" :class="usuariosOnline.includes(colegaAtivo.id) ? 'text-emerald-500' : 'text-slate-400'">
+                                {{ usuariosOnline.includes(colegaAtivo.id) ? 'Online agora' : 'Offline' }}
+                            </span>
                         </div>
                     </div>
-                    
-                    <div class="flex flex-col min-w-0">
-                        <h3 class="font-bold text-sm text-slate-800 truncate">{{ colegaAtivo.nome }}</h3>
-                        <span class="text-[11px] font-medium transition-colors duration-300" :class="usuariosOnline.includes(colegaAtivo.id) ? 'text-emerald-500' : 'text-slate-400'">
-                            {{ usuariosOnline.includes(colegaAtivo.id) ? 'Online agora' : 'Offline' }}
-                        </span>
-                    </div>
+
+                    <button @click="fecharChateWidget" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer">
+                        <X class="w-5 h-5" />
+                    </button>
                 </div>
 
                 <!-- Spinner enquanto carrega as mensagens -->

@@ -90,7 +90,7 @@ const modalVariants = cva(
                     enter-active-class="transition-all duration-300 ease-out delay-75"
                     enter-from-class="scale-95 opacity-0 translate-y-4"
                     enter-to-class="scale-100 opacity-100 translate-y-0"
-                    leave-active-class="transition-all duration-200 ease-in"
+                    leave-active-class="transition-all duration-100 ease-in"
                     leave-from-class="scale-100 opacity-100"
                     leave-to-class="scale-95 opacity-0"
                     appear

@@ -38,11 +38,11 @@ const navigation = [
     //     to: '/professor/mensagens',
     //     icon: MessageCircle,
     // },
-    {
-        title: 'Configurações',
-        to: '/professor/configuracoes',
-        icon: Settings,
-    },
+    // {
+    //     title: 'Configurações',
+    //     to: '/professor/configuracoes',
+    //     icon: Settings,
+    // },
 ]
 
 // Dispara navegação se o link for clicado
