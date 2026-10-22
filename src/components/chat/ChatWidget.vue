@@ -1,6 +1,6 @@
 <script setup>
     import { ref, watch, nextTick } from 'vue';
-    import { MessageCircle, X, Send, ChevronLeft, User, Trash2 } from '@lucide/vue';
+    import { MessageCircle, X, Send, ChevronLeft, User, Trash2, ThumbsUp } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
 
     const { 
@@ -16,7 +16,8 @@
         abrirChatCom, 
         fecharChat, 
         enviarMensagem, 
-        excluirMensagem, 
+        excluirMensagem,
+        confirmarLike, 
         sinalizarDigitacao
     } = useChat();
 
@@ -24,13 +25,16 @@
     const containerMensagens = ref(null);
     const enviando = ref(false);
 
-    // Mantém o scroll no fim da conversa
-    watch(mensagens, async () => {
+    // Mantém o scroll no fim apenas para novas mensagens ou ao carregar chat
+    watch(() => mensagens.value.length, async (novoTamanho, tamanhoAntigo) => {
+        // Ignora se o tamanho diminuiu (exclusão de mensagem)
+        if (tamanhoAntigo !== undefined && novoTamanho < tamanhoAntigo) return;
+
         await nextTick();
         if (containerMensagens.value) {
             containerMensagens.value.scrollTop = containerMensagens.value.scrollHeight;
         }
-    }, { deep: true });
+    });
 
     // Trata o envio bloqueando múltiplos cliques
     const handleEnviar = async () => {
@@ -175,7 +179,7 @@
                             <button 
                                 v-if="msg.remetente_id === currentUser.id" 
                                 @click="excluirMensagem(msg.id)"
-                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 transition-opacity shrink-0"
+                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 transition-opacity shrink-0 cursor-pointer"
                                 title="Apagar mensagem"
                             >
                                 <Trash2 class="w-4 h-4" />
@@ -206,6 +210,16 @@
                                     </template>
                                 </div>
                             </div>
+                            <!-- Ícone de Like -->
+                            <button 
+                                v-if="msg.remetente_id !== currentUser.id" 
+                                @click="confirmarLike(msg.id)"
+                                class="btn-like opacity-0 group-hover:opacity-100 p-1 transition-opacity shrink-0 cursor-pointer"
+                                title="Confirmar Mensagem"
+                                :class="msg.like ? 'text-green-500' : 'text-slate-400'"
+                            >
+                                <ThumbsUp class="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 </div>

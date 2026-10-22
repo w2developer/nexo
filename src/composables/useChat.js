@@ -126,6 +126,29 @@ export function useChat() {
         await supabase.from('chat_mensagem').delete().eq('id', msgId);
     };
 
+    // Confirmar Like
+    const confirmarLike = async (msgId) => {
+        // Localiza a mensagem
+        const msg = mensagens.value.find(m => m.id === msgId);
+        if (!msg) return;
+
+        // Alterna o estado local
+        const novoStatus = !msg.like;
+        msg.like = novoStatus;
+
+        // Salva no banco de dados
+        const { error } = await supabase
+            .from('chat_mensagem')
+            .update({ like: novoStatus })
+            .eq('id', msgId);
+
+        // Desfaz em caso de erro
+        if (error) {
+            msg.like = !novoStatus;
+            console.error("Erro ao atualizar like:", error);
+        }
+    };
+
     // Atualiza status para lida
     const marcarMensagensComoLidas = async () => {
         const mensagensNaoLidas = mensagens.value.filter(m => m.remetente_id !== currentUser.value.id && !m.lida);
@@ -215,6 +238,6 @@ export function useChat() {
     return {
         colegas, mensagens, colegaAtivo, widgetAberto, currentUser, carregando,
         usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId,
-        initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem, sinalizarDigitacao
+        initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem, confirmarLike, sinalizarDigitacao
     };
 }
