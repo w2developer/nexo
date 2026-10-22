@@ -1,8 +1,6 @@
 <script setup>
     import { ref, watch, onMounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Plus, Trash2 } from '@lucide/vue';
-    import { turnos, diaSemana, horas } from '@/utils/constants';
     import { toast } from '@/composables/useToast';
 
     import Modal from '@/components/ui/Modal.vue';
@@ -10,6 +8,7 @@
     import FormGroup from '@/components/ui/FormGroup.vue';
     import Input from '@/components/ui/Input.vue';
     import Select from '@/components/ui/Select.vue';
+    import Switch from '@/components/ui/Switch.vue';
 
     const props = defineProps({
         modelValue: { type: Boolean, required: true },
@@ -21,11 +20,6 @@
     const cursosOpcoes = ref([]);
     const salvandoEdicao = ref(false);
 
-    const opcoesModalidade = [
-        { label: 'Presencial', value: false },
-        { label: 'EAD', value: true }
-    ];
-
     const formEdicao = ref({
         matricula_id: null,
         aluno_id: null,
@@ -35,17 +29,12 @@
         responsavel: '',
         data_inicio: '',
         data_fim: '',
-        ead: false,
-        horarios: []
+        ead: false // Agora é um booleano puro para o Switch
     });
 
-    // Preenche o formulário quando a matrícula selecionada muda
+    // Preenche o formulário quando a matrícula muda
     watch(() => props.matricula, (item) => {
         if (!item) return;
-
-        const listaHorarios = Array.isArray(item.horario?.horario)
-            ? JSON.parse(JSON.stringify(item.horario.horario))
-            : [];
 
         formEdicao.value = {
             matricula_id: item.id,
@@ -56,8 +45,7 @@
             responsavel: item.responsavel || '',
             data_inicio: item.data_inicio ? item.data_inicio.split('T')[0] : '',
             data_fim: item.data_fim ? item.data_fim.split('T')[0] : '',
-            ead: Boolean(item.ead),
-            horarios: listaHorarios
+            ead: Boolean(item.ead)
         };
     }, { immediate: true });
 
@@ -65,28 +53,7 @@
         emit('update:modelValue', false);
     };
 
-    const adicionarHorario = () => {
-        formEdicao.value.horarios.push({
-            dia_semana: diaSemana[0]?.value || '',
-            turno: turnos[0]?.value || '',
-            hora_inicio: ''
-        });
-    };
-
-    const removerHorario = (index) => {
-        formEdicao.value.horarios.splice(index, 1);
-    };
-
-    const getHorasPorTurno = (turno) => {
-        if (!turno) return horas;
-        return horas.filter(h => h.turno === turno);
-    };
-
-    const aoMudarTurnoHorario = (horarioItem) => {
-        const opcoes = getHorasPorTurno(horarioItem.turno);
-        horarioItem.hora_inicio = opcoes.length > 0 ? opcoes[0].value : '';
-    };
-
+    // Carrega lista de cursos
     const buscarCursos = async () => {
         try {
             const { data, error } = await supabase
@@ -105,6 +72,7 @@
         }
     };
 
+    // Salva alterações no banco
     const salvarEdicao = async () => {
         if (!formEdicao.value.nome.trim() || !formEdicao.value.codigo.trim()) {
             toast.error("Atenção", "Nome e código do aluno são obrigatórios.");
@@ -118,34 +86,41 @@
 
         salvandoEdicao.value = true;
         try {
-            // Atualiza tabela aluno
-            const { error: erroAluno } = await supabase
+            // 1. Atualiza tabela aluno
+            const { data: alunoAtualizado, error: erroAluno } = await supabase
                 .from('aluno')
                 .update({
                     nome: formEdicao.value.nome.trim(),
                     codigo: formEdicao.value.codigo.trim()
                 })
-                .eq('id', formEdicao.value.aluno_id);
+                .eq('id', formEdicao.value.aluno_id)
+                .select();
 
             if (erroAluno) throw erroAluno;
 
-            // Atualiza tabela matricula
+            // 2. Monta payload da matrícula (não mexe no horário)
             const payloadMatricula = {
-                curso_id: formEdicao.value.curso_id,
+                curso_id: Number(formEdicao.value.curso_id),
                 responsavel: formEdicao.value.responsavel?.trim() || null,
                 data_inicio: formEdicao.value.data_inicio,
                 data_fim: formEdicao.value.data_fim || null,
-                ead: formEdicao.value.ead,
-                horario: formEdicao.value.ead ? null : { horario: formEdicao.value.horarios },
-                atualizado_em: new Date().toISOString()
+                ead: formEdicao.value.ead
             };
 
-            const { error: erroMatricula } = await supabase
+            // 3. Atualiza tabela matricula
+            const { data: matriculaAtualizada, error: erroMatricula } = await supabase
                 .from('matricula')
                 .update(payloadMatricula)
-                .eq('id', formEdicao.value.matricula_id);
+                .eq('id', formEdicao.value.matricula_id)
+                .select();
 
             if (erroMatricula) throw erroMatricula;
+
+            // Verifica se o RLS bloqueou silenciosamente o UPDATE
+            if (!alunoAtualizado?.length || !matriculaAtualizada?.length) {
+                toast.error("Permissão negada", "O banco recusou a alteração (verifique as políticas RLS de UPDATE).");
+                return;
+            }
 
             toast.success("Sucesso", "Dados do aluno atualizados com sucesso!");
             emit('salvo');
@@ -166,7 +141,7 @@
         :model-value="modelValue" 
         @update:model-value="emit('update:modelValue', $event)"
         title="Editar Aluno" 
-        size="xl"
+        size="lg"
     >
         <div class="space-y-6">
             <!-- Dados Cadastrais -->
@@ -203,10 +178,28 @@
                     </FormGroup>
 
                     <FormGroup label="Modalidade" id="edit-ead">
-                        <Select 
-                            v-model="formEdicao.ead" 
-                            :options="opcoesModalidade" 
-                        />
+                        <div class="flex items-center gap-3 mt-1.5 h-10">
+                            <span 
+                                class="text-sm transition-colors cursor-pointer select-none" 
+                                :class="!formEdicao.ead ? 'font-semibold text-slate-900' : 'text-slate-500'"
+                                @click="formEdicao.ead = false"
+                            >
+                                Presencial
+                            </span>
+                            
+                            <Switch 
+                                id="switch-ead"
+                                v-model="formEdicao.ead" 
+                            />
+                            
+                            <span 
+                                class="text-sm transition-colors cursor-pointer select-none" 
+                                :class="formEdicao.ead ? 'font-semibold text-slate-900' : 'text-slate-500'"
+                                @click="formEdicao.ead = true"
+                            >
+                                EAD
+                            </span>
+                        </div>
                     </FormGroup>
 
                     <FormGroup label="Data de Início" id="edit-data-inicio">
@@ -216,75 +209,6 @@
                     <FormGroup label="Previsão de Término" id="edit-data-fim">
                         <Input v-model="formEdicao.data_fim" type="date" />
                     </FormGroup>
-
-                    <div class="sm:col-span-2">
-                        <FormGroup label="Responsável (Opcional)" id="edit-responsavel">
-                            <Input v-model="formEdicao.responsavel" placeholder="Nome do responsável..." />
-                        </FormGroup>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Horários de Aula -->
-            <div v-if="!formEdicao.ead" class="space-y-4">
-                <div class="flex items-center justify-between border-b border-border pb-2">
-                    <h3 class="text-sm font-semibold text-slate-900">
-                        Horários de Aula
-                    </h3>
-                    <Button size="sm" variant="outline" @click="adicionarHorario">
-                        <Plus class="w-4 h-4 mr-1" />
-                        Adicionar Horário
-                    </Button>
-                </div>
-
-                <div v-if="formEdicao.horarios.length === 0" class="text-sm text-muted-foreground text-center py-4 bg-slate-50 rounded-md border border-dashed border-slate-200">
-                    Nenhum horário definido para este aluno.
-                </div>
-
-                <div v-else class="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                    <div 
-                        v-for="(h, index) in formEdicao.horarios" 
-                        :key="index"
-                        class="grid grid-cols-1 sm:grid-cols-10 gap-3 items-end bg-slate-50 p-3 rounded-md border border-slate-200"
-                    >
-                        <div class="sm:col-span-3">
-                            <FormGroup label="Dia" :id="`dia-${index}`">
-                                <Select v-model="h.dia_semana" :options="diaSemana" placeholder="Dia" />
-                            </FormGroup>
-                        </div>
-
-                        <div class="sm:col-span-3">
-                            <FormGroup label="Turno" :id="`turno-${index}`">
-                                <Select 
-                                    v-model="h.turno" 
-                                    :options="turnos" 
-                                    placeholder="Turno"
-                                    @update:modelValue="aoMudarTurnoHorario(h)"
-                                />
-                            </FormGroup>
-                        </div>
-
-                        <div class="sm:col-span-3">
-                            <FormGroup label="Hora" :id="`hora-${index}`">
-                                <Select 
-                                    v-model="h.hora_inicio" 
-                                    :options="getHorasPorTurno(h.turno)" 
-                                    placeholder="Hora" 
-                                />
-                            </FormGroup>
-                        </div>
-
-                        <div class="sm:col-span-1 flex justify-end">
-                            <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2"
-                                @click="removerHorario(index)"
-                            >
-                                <Trash2 class="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

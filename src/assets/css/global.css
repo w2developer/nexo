@@ -53,3 +53,7 @@
 *::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground); /* Escurece suavemente ao passar o mouse */
 }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+}

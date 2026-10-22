@@ -1,7 +1,14 @@
 <script setup>
     import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Menu } from '@lucide/vue';
+    import { useRouter } from 'vue-router';
+    import { Menu, UserPen, ClipboardClock, SquareCheck } from '@lucide/vue';
+
+    const router = useRouter();
+
+    const irParaEditarAluno = (item) => {
+        router.push(`/professor/editar-aluno/${item.aluno_id}`);
+    };
 
     import { turnos, diaSemana, horas } from '@/utils/constants';
     import { 
@@ -313,15 +320,24 @@
                                                 </template>
                                                 <template #content>
                                                     <button
-                                                        @click="abrirModalEditar(item)"
-                                                        class="w-full text-left px-4 py-2 hover:bg-muted rounded transition-colors text-sm cursor-pointer"
+                                                        @click="irParaEditarAluno(item)"
+                                                        class="w-full flex text-left px-4 py-2 gap-2 hover:bg-muted rounded transition-colors text-sm cursor-pointer"
                                                     >
+                                                        <UserPen size="18"/>
                                                         Editar Aluno
+                                                    </button>
+                                                    <button
+                                                        @click="$router.push(`/professor/horarios/${item.id}`)"
+                                                        class="w-full flex text-left px-4 py-2 gap-2 hover:bg-muted rounded transition-colors text-sm cursor-pointer"
+                                                    >
+                                                        <ClipboardClock size="18"/>
+                                                        Gerenciar Horários
                                                     </button>
                                                     <button 
                                                         @click="abrirModalConcluir(item)" 
-                                                        class="w-full text-left px-4 py-2 cursor-pointer hover:bg-emerald-50 text-emerald-600 rounded transition-colors text-sm font-medium"
+                                                        class="w-full flex text-left px-4 py-2 gap-2 cursor-pointer hover:bg-emerald-50 text-emerald-600 rounded transition-colors text-sm font-medium"
                                                     >
+                                                        <SquareCheck size="18"/>
                                                         Concluir Aluno
                                                     </button>
                                                 </template>

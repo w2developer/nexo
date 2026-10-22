@@ -1,5 +1,5 @@
 <script setup>
-import { List, ListChecks, Settings, ListTodo, MessageCircle } from '@lucide/vue'
+import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
 
@@ -22,6 +22,11 @@ const navigation = [
         title: 'Marcar Presença',
         to: '/professor/presenca',
         icon: ListTodo,
+    },
+    {
+        title: 'Cadastrar Aluno',
+        to: '/professor/cadastrar-aluno',
+        icon: ListPlus,
     },
     {
         title: 'Controle de Alunos',

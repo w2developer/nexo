@@ -22,6 +22,7 @@ export default [
             },
             {
                 path: 'editar-aluno/:id',
+                name: 'ProfessorEditarAluno',
                 component: () => import('@/modules/professor/views/EditarAluno.vue'),
             },
             {
@@ -29,6 +30,21 @@ export default [
                 name: 'professor-mensagens',
                 component: () => import('@/modules/chat/MensagensEquipe.vue'),
                 meta: { title: 'Mensagens' }
+            },
+            {
+                path: 'horarios/:id',
+                name: 'ProfessorGerenciarHorarios',
+                component: () => import('../views/GerenciarHorarios.vue')
+            },
+            {
+                path: 'nova-matricula/:id',
+                name: 'ProfessorNovaMatricula',
+                component: () => import('@/modules/professor/views/NovaMatricula.vue')
+            },
+            {
+                path: 'cadastrar-aluno',
+                name: 'CadastrarAluno',
+                component: () => import('@/modules/professor/views/CadastrarAluno.vue')
             }
         ],
     },

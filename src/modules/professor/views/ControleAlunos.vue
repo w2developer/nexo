@@ -1,10 +1,12 @@
 <script setup>
     import { ref, computed, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Search, ChevronRight, Menu, Edit, UserX, UserCheck, BookOpen } from '@lucide/vue';
+    import { Search, ChevronRight, Menu, UserPen, UserX, UserCheck, BookOpen } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome } from '@/utils/formatters';
-    import router from '@/router';
+    import { useRouter } from 'vue-router';
+
+    const router = useRouter();
 
     import Button from '@/components/ui/Button.vue';
     import Card from '@/components/ui/Card.vue';
@@ -24,6 +26,11 @@
     const termoPesquisa = ref('');
     const linhaExpandida = ref(null);
     let realtimeChannel;
+
+    const irParaNovaMatricula = (aluno) => {
+        router.push(`/professor/nova-matricula/${aluno.id}`);
+    };
+
 
     // Ações da interface
     const toggleLinha = (id) => {
@@ -185,17 +192,21 @@
                                         </Button>
                                     </template>
                                     <template #content>
-                                        <button @click="abrirModalEdicaoAluno(aluno)" class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors">
-                                            <Edit class="w-4 h-4" /> Editar Aluno
+                                        <button @click="abrirModalEdicaoAluno(aluno)" class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors cursor-pointer">
+                                            <UserPen size="18"/>
+                                            Editar Aluno
                                         </button>
-                                        <button class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors">
+                                        <button
+                                            @click="irParaNovaMatricula(aluno)"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors cursor-pointer"
+                                        >
                                             <BookOpen class="w-4 h-4" /> Nova Matrícula
                                         </button>
                                         <hr class="my-1 border-border" />
-                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
                                             <UserX class="w-4 h-4" /> Desativar Aluno
                                         </button>
-                                        <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                        <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer">
                                             <UserCheck class="w-4 h-4" /> Reativar Aluno
                                         </button>
                                     </template>

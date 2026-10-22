@@ -1,19 +1,32 @@
 <script setup>
-import { cn } from '../../utils/cn'
+    import { computed } from 'vue';
+    import { cn } from '@/utils/cn';
 
-// Gerencia o estado boolean
-const modelValue = defineModel({ type: Boolean, default: false })
+    // Gerencia o estado boolean
+    const modelValue = defineModel({ type: Boolean, default: false });
 
-const props = defineProps({
-    id: { type: String, default: '' },
-    disabled: { type: Boolean, default: false },
-    class: { type: String, default: '' },
-})
+    const props = defineProps({
+        id: { type: String, default: '' },
+        disabled: { type: Boolean, default: false },
+        variant: { type: String, default: 'default' },
+        class: { type: String, default: '' }
+    });
 
-// Alterna o valor
-const toggle = () => {
-    if (!props.disabled) modelValue.value = !modelValue.value
-}
+    // Cores quando ativado conforme hierarquia
+    const corAtiva = computed(() => {
+        const variantes = {
+            default: 'bg-primary',
+            violet: 'bg-violet-600',
+            emerald: 'bg-emerald-600',
+            amber: 'bg-amber-500'
+        };
+        return variantes[props.variant] || variantes.default;
+    });
+
+    // Alterna o valor
+    const toggle = () => {
+        if (!props.disabled) modelValue.value = !modelValue.value;
+    };
 </script>
 
 <template>
@@ -27,8 +40,8 @@ const toggle = () => {
         :class="
             cn(
                 'peer inline-flex h-[24px] w-[44px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                modelValue ? 'bg-primary' : 'bg-muted-foreground/30',
-                props.class,
+                modelValue ? corAtiva : 'bg-muted-foreground/30',
+                props.class
             )
         "
     >
@@ -37,7 +50,7 @@ const toggle = () => {
             :class="
                 cn(
                     'pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform',
-                    modelValue ? 'translate-x-5' : 'translate-x-0',
+                    modelValue ? 'translate-x-5' : 'translate-x-0'
                 )
             "
         />
