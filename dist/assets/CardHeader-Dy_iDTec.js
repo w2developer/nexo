@@ -1,0 +1,1 @@
+import{G as e,O as t,T as n,u as r,ut as i}from"./runtime-core.esm-bundler-66G-0oZb.js";import{r as a}from"./Button-B78dhdpr.js";var o={__name:`CardHeader`,props:{class:{type:String,default:``}},setup(o){let s=o;return(o,c)=>(n(),r(`div`,{class:i(e(a)(`flex flex-col space-y-1.5 p-6`,s.class))},[t(o.$slots,`default`)],2))}};export{o as t};
