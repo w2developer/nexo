@@ -7,7 +7,8 @@
     const router = useRouter();
 
     const irParaEditarAluno = (item) => {
-        router.push(`/professor/editar-aluno/${item.aluno_id}`);
+        // router.push(`/professor/editar-aluno/${item.aluno_id}`);
+        router.push(`/professor/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
     };
 
     import { turnos, diaSemana, horas } from '@/utils/constants';

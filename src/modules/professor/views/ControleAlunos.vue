@@ -41,8 +41,8 @@
         router.push('/professor/editar-aluno/' + aluno.id);
     };
 
-    const abrirModalEdicaoMatricula = (matricula) => {
-        toast.info("Em breve", `Abrir edição da matrícula ID: ${matricula.id}`);
+    const abrirModalEdicaoMatricula = (matricula, idDoAluno) => {
+        router.push(`/professor/editar-aluno/${idDoAluno}?matricula=${matricula.id}`);
     };
 
     // Busca de dados
@@ -223,7 +223,7 @@
                         <div class="overflow-hidden">
                             <SublistaMatriculas 
                                 :matriculas="aluno.matricula" 
-                                @ver-detalhes="abrirModalEdicaoMatricula" 
+                                @ver-detalhes="(mat) => abrirModalEdicaoMatricula(mat, aluno.id)" 
                             />
                         </div>
                     </div>
