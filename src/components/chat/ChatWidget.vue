@@ -197,6 +197,10 @@
                                 ></div>
                                 
                                 <div class="flex items-center gap-1.5 mt-1.5 px-1">
+                                    <span
+                                    class="text-[10px] text-green-400 font-medium"
+                                        v-if="msg.remetente_id === currentUser.id && msg.like === true"
+                                    >Confirmado por Usuário - </span>
                                     <span class="text-[10px] text-slate-400 font-medium">
                                         {{ formatarHora(msg.criado_em) }}
                                     </span>
