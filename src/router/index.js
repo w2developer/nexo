@@ -56,7 +56,7 @@ const routes = [
     // },
 ]
 
-const router = createRouter({ history: createWebHistory(), routes })
+const router = createRouter({ history: createWebHistory('/nexo/'), routes })
 
 router.beforeEach((to, from) => {
     const token = sessionStorage.getItem('token_acesso')
