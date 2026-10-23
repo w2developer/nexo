@@ -2,6 +2,7 @@
     import { ref, watch, nextTick } from 'vue';
     import { MessageCircle, X, Send, ChevronLeft, User, Trash2, ThumbsUp } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
+    import Badge from '../ui/Badge.vue';
 
     const { 
         colegas,             
@@ -11,14 +12,16 @@
         currentUser,         
         carregando,          
         usuariosOnline,      
-        quemEstaDigitando,   
+        quemEstaDigitando,
+        naoLidasGlobais,
+        temMensagemNaoLida,   
         toggleWidget, 
         abrirChatCom, 
         fecharChat, 
         enviarMensagem, 
         excluirMensagem,
         confirmarLike, 
-        sinalizarDigitacao
+        sinalizarDigitacao,
     } = useChat();
 
     const novaMensagem = ref('');
@@ -84,7 +87,6 @@
 
 <template>
     <div class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end font-sans">
-        
         <!-- Janela do Widget -->
         <div 
             v-if="widgetAberto" 
@@ -124,6 +126,12 @@
                             <div class="font-semibold text-sm text-slate-800 truncate">{{ colega.nome }}</div>
                             <div class="text-xs text-slate-500 mt-0.5 capitalize">{{ colega.tipo || 'Colaborador' }}</div>
                         </div>
+
+                        <!-- Badge de Mensagens Não Lidas (Opcional) -->
+                        <!-- Mostra a bolinha se o contador for maior que 0 -->
+                        <span v-if="naoLidasGlobais[colega.id] > 0" class="badge">
+                            {{ naoLidasGlobais[colega.id] }}
+                        </span>
                     </button>
 
                     <div v-if="colegas.length === 0" class="p-8 text-center text-sm text-slate-400">
@@ -198,9 +206,17 @@
                                 
                                 <div class="flex items-center gap-1.5 mt-1.5 px-1">
                                     <span
-                                    class="text-[10px] text-green-400 font-medium"
+                                        class="flex gap-1 text-[10px] text-slate-400 font-medium"
                                         v-if="msg.remetente_id === currentUser.id && msg.like === true"
-                                    >Confirmado por Usuário - </span>
+                                    >
+                                        <ThumbsUp size="14" />
+                                        {{ colegaAtivo.nome }}
+                                    </span>
+                                    <span
+                                        v-if="msg.remetente_id === currentUser.id && msg.like === true"
+                                        class="flex gap-1 text-[10px] text-slate-400 font-medium">
+                                        |
+                                    </span>
                                     <span class="text-[10px] text-slate-400 font-medium">
                                         {{ formatarHora(msg.criado_em) }}
                                     </span>
@@ -266,8 +282,26 @@
             @click="toggleWidget"
             class="w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center"
         >
+            <div v-if="temMensagemNaoLida && !widgetAberto" class="indicador-msg">
+                Nova Mensagem
+            </div>
             <X class="w-6 h-6" v-if="widgetAberto" />
             <MessageCircle class="w-6 h-6" v-else />
         </button>
     </div>
 </template>
+
+<style scoped>
+    .indicador-msg {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background-color: red;
+        color: white;
+        font-size: 10px;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+</style>

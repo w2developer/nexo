@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
 
 // ==========================================
@@ -29,6 +29,7 @@ export function useChat() {
         if (token) supabase.realtime.setAuth(token);
         
         await carregarColegas();
+        await carregarNaoLidas();
         iniciarRealtime();
     };
 
@@ -149,13 +150,48 @@ export function useChat() {
         }
     };
 
+    // Busca total de não lidas ao iniciar
+	const carregarNaoLidas = async () => {
+		if (!currentUser.value.id) return;
+		
+		// Busca salas do usuário atual
+		const { data: salas } = await supabase
+			.from('chat_sala')
+			.select('id')
+			.or(`usuario_a_id.eq.${currentUser.value.id},usuario_b_id.eq.${currentUser.value.id}`);
+			
+		if (!salas || salas.length === 0) return;
+		
+		const idsSalas = salas.map(s => s.id);
+		
+		// Conta mensagens não lidas enviadas por outros nessas salas
+		const { data: pendentes } = await supabase
+			.from('chat_mensagem')
+			.select('remetente_id')
+			.in('sala_id', idsSalas)
+			.eq('lida', false)
+			.neq('remetente_id', currentUser.value.id);
+			
+		if (pendentes) {
+			// Agrupa contagem pelo ID do colega
+			pendentes.forEach(msg => {
+				const id = msg.remetente_id;
+				naoLidasGlobais.value[id] = (naoLidasGlobais.value[id] || 0) + 1;
+			});
+		}
+	};
+
     // Atualiza status para lida
     const marcarMensagensComoLidas = async () => {
         const mensagensNaoLidas = mensagens.value.filter(m => m.remetente_id !== currentUser.value.id && !m.lida);
         if (mensagensNaoLidas.length === 0) return;
 
         mensagensNaoLidas.forEach(m => m.lida = true);
-        naoLidasGlobais.value[salaAtivaId.value] = 0;
+
+        // Zera contador do colega ativo
+		if (colegaAtivo.value) {
+			naoLidasGlobais.value[colegaAtivo.value.id] = 0; 
+		}
 
         await supabase
             .from('chat_mensagem')
@@ -210,7 +246,7 @@ export function useChat() {
                     if (!mensagens.value.find(m => m.id === nova.id)) mensagens.value.push(nova);
                     if (nova.remetente_id !== currentUser.value.id) marcarMensagensComoLidas();
                 } else if (nova.remetente_id !== currentUser.value.id) {
-                    naoLidasGlobais.value[nova.sala_id] = (naoLidasGlobais.value[nova.sala_id] || 0) + 1;
+                    naoLidasGlobais.value[nova.remetente_id] = (naoLidasGlobais.value[nova.remetente_id] || 0) + 1;
                 }
             })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_mensagem' }, (payload) => {
@@ -235,9 +271,13 @@ export function useChat() {
 
     const toggleWidget = () => widgetAberto.value = !widgetAberto.value;
 
+    const temMensagemNaoLida = computed(() => {
+        return Object.values(naoLidasGlobais.value).some(qtd => qtd > 0);
+    });
+
     return {
         colegas, mensagens, colegaAtivo, widgetAberto, currentUser, carregando,
-        usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId,
+        usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId, temMensagemNaoLida,
         initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem, confirmarLike, sinalizarDigitacao
     };
 }
