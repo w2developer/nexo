@@ -61,3 +61,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 html {
   scroll-behavior: smooth;
 }
+
+button {
+    cursor: pointer;
+}

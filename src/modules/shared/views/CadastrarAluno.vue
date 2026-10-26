@@ -1,5 +1,5 @@
 <script setup>
-    import { ref } from 'vue';
+    import { ref, onMounted } from 'vue';
     import { useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
     import { UserPlus, User, BookOpen, Sparkles, RotateCcw } from '@lucide/vue';
@@ -21,6 +21,7 @@
     // Estados
     const salvando = ref(false);
     const irParaMatricula = ref(true);
+    const tipoUsuario = ref(null)
 
     const form = ref({
         nome: '',
@@ -77,7 +78,7 @@
             // Redireciona para Nova Matrícula ou limpa para novo cadastro
             if (irParaMatricula.value && novoAluno?.id) {
                 toast.success("Sucesso", "Aluno cadastrado! Selecione o curso para matrícula.");
-                router.push(`/professor/nova-matricula/${novoAluno.id}`);
+                router.push(`/${tipoUsuario.value}/nova-matricula/${novoAluno.id}`);
             } else {
                 toast.success("Sucesso", "Aluno cadastrado com sucesso!");
                 limparFormulario();
@@ -89,6 +90,15 @@
             salvando.value = false;
         }
     };
+
+    // 2. Acesse o sessionStorage ee pega o tipo de user
+    onMounted(() => {
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        
+        if (sessionUsuario !== null) {
+            tipoUsuario.value = sessionUsuario
+        }
+    })
 </script>
 
 <template>
@@ -141,7 +151,6 @@
         <!-- Dados Cadastrais -->
         <Card>
             <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                <User class="w-5 h-5 text-slate-500" />
                 <h3 class="font-bold text-base text-slate-900">Dados Cadastrais</h3>
             </CardHeader>
 
@@ -162,10 +171,10 @@
                             <div class="flex items-center gap-1.5">
                                 <Input 
                                     v-model="form.codigo" 
-                                    placeholder="Ex: AL12345" 
+                                    placeholder="Ex: 001234" 
                                     @keyup.enter="cadastrarAluno"
                                 />
-                                <Button 
+                                <!-- <Button 
                                     type="button"
                                     variant="outline" 
                                     size="sm" 
@@ -174,7 +183,7 @@
                                     @click="gerarCodigoAleatorio"
                                 >
                                     <Sparkles class="w-4 h-4 text-indigo-600" />
-                                </Button>
+                                </Button> -->
                             </div>
                         </FormGroup>
                     </div>

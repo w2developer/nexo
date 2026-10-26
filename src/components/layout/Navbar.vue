@@ -16,6 +16,7 @@ const breadcrumbItems = computed(() => {
     let basePath = `/${role}`
     if (role === 'aluno') basePath += '/painel'
     else if (role === 'professor') basePath += '/presenca'
+    else if (role === 'secretaria') basePath += '/dashboard'
     else if (role === 'admin') basePath = '/admin'
 
     const items = [{ label: 'Início', to: basePath, icon: 'home' }]
@@ -59,7 +60,16 @@ onMounted(() => {
     const nome = sessionStorage.getItem('nome_usuario')
 
     if (tipo) {
-        cargoUsuario.value = tipo.charAt(0).toUpperCase() + tipo.slice(1)
+        // Dicionário de formatação de cargos
+        const formatadorCargos = {
+            'professor': 'Professor (a)',
+            'secretaria': 'Secretário (a)',
+            'admin': 'Administrador (a)',
+            'aluno': 'Aluno (a)'
+        }
+        
+        // Aplica a formatação ou usa o valor padrão capitalizado caso não exista no dicionário
+        cargoUsuario.value = formatadorCargos[tipo.toLowerCase()] || (tipo.charAt(0).toUpperCase() + tipo.slice(1))
     }
 
     if (nome) {

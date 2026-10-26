@@ -265,7 +265,6 @@
         <Card v-if="!carregando">
             <CardContent class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-violet-600 shrink-0"></span>
                     <span class="text-sm font-semibold text-slate-700">
                         Ativar turno na semana toda (Seg a Sáb):
                     </span>

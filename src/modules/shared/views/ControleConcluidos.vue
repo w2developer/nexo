@@ -1,7 +1,17 @@
 <script setup>
     import { ref, computed, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Search, Menu, ChevronDown, Clock, XCircle, PauseCircle } from '@lucide/vue';
+    import { 
+        Search, 
+        Menu, 
+        ChevronDown, 
+        Clock, 
+        XCircle, 
+        PauseCircle,
+        MinusCircle,
+        FileCheck,
+        CheckCircle
+    } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarDataBR } from '@/utils/dateHelpers';
     import { formatarNome, capitalizar } from '@/utils/formatters';
@@ -214,10 +224,18 @@
                                         <div class="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-border">
                                             Status do Certificado
                                         </div>
-                                        <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-medium">Não Solicitado</button>
-                                        <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-600 transition-colors text-xs font-medium">Pendente</button>
-                                        <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-600 transition-colors text-xs font-medium">Emitido</button>
-                                        <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 transition-colors text-xs font-medium border-t border-slate-100">Entregue</button>
+                                        <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-medium">
+                                            <MinusCircle size="14"/> Não Solicitado
+                                        </button>
+                                        <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-amber-50 text-amber-600 transition-colors text-xs font-medium">
+                                            <Clock size="14"/> Pendente
+                                        </button>
+                                        <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-blue-50 text-blue-600 transition-colors text-xs font-medium">
+                                            <FileCheck size="14"/>Emitido
+                                        </button>
+                                        <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 transition-colors text-xs font-medium border-t border-slate-100">
+                                            <CheckCircle size="14"/> Entregue
+                                        </button>
                                     </template>
                                 </Dropdown>
                             </div>
@@ -252,5 +270,9 @@
                 </div>
             </div>
         </Card>
+        <br>
+        <br>
+        <br>
+        <br>
     </div>
 </template>

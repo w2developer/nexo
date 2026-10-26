@@ -27,6 +27,7 @@
     const salvando = ref(false);
     const cursosOpcoes = ref([]);
     const matriculaExpandida = ref(null);
+    const tipoUsuario = ref(null)
 
     // Dados do aluno
     const formAluno = ref({
@@ -212,6 +213,15 @@
         }
     };
 
+    // 2. Acesse o sessionStorage ee pega o tipo de user
+    onMounted(() => {
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        
+        if (sessionUsuario !== null) {
+            tipoUsuario.value = sessionUsuario
+        }
+    })
+
     onMounted(() => {
         buscarCursos();
         carregarDados();
@@ -267,7 +277,6 @@
             <!-- Seção 1: Dados Cadastrais -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                    <User class="w-5 h-5 text-slate-500" />
                     <h3 class="font-bold text-base text-slate-900">Dados Cadastrais</h3>
                 </CardHeader>
                 <CardContent class="p-4">
@@ -380,7 +389,7 @@
                                     size="sm" 
                                     variant="outline" 
                                     class="bg-white h-8 px-2.5 text-xs"
-                                    @click="router.push(`/professor/horarios/${mat.id}`)"
+                                    @click="router.push(`/${tipoUsuario}/horarios/${mat.id}`)"
                                 >
                                     <Calendar class="w-3.5 h-3.5 sm:mr-1.5" />
                                     <span class="hidden sm:inline">Horários</span>

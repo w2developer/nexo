@@ -22,13 +22,14 @@
 
     // Estados
     const alunos = ref([]);
+    const tipoUsuario = ref(null)
     const carregando = ref(true);
     const termoPesquisa = ref('');
     const linhaExpandida = ref(null);
     let realtimeChannel;
 
     const irParaNovaMatricula = (aluno) => {
-        router.push(`/professor/nova-matricula/${aluno.id}`);
+        router.push(`/${tipoUsuario.value}/nova-matricula/${aluno.id}`);
     };
 
 
@@ -38,11 +39,11 @@
     };
 
     const abrirModalEdicaoAluno = (aluno) => {
-        router.push('/professor/editar-aluno/' + aluno.id);
+        router.push(`/${tipoUsuario.value}/editar-aluno/${aluno.id}`);
     };
 
     const abrirModalEdicaoMatricula = (matricula, idDoAluno) => {
-        router.push(`/professor/editar-aluno/${idDoAluno}?matricula=${matricula.id}`);
+        router.push(`/${tipoUsuario.value}/editar-aluno/${idDoAluno}?matricula=${matricula.id}`);
     };
 
     // Busca de dados
@@ -81,6 +82,15 @@
             aluno.codigo.toLowerCase().includes(termo)
         );
     });
+
+    // 2. Acesse o sessionStorage ee pega o tipo de user
+    onMounted(() => {
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        
+        if (sessionUsuario !== null) {
+            tipoUsuario.value = sessionUsuario
+        }
+    })
 
     // Ciclo de vida e Realtime
     onMounted(() => {
@@ -230,5 +240,9 @@
                 </div>
             </div>
         </Card>
+        <br>
+        <br>
+        <br>
+        <br>
     </div>
 </template>

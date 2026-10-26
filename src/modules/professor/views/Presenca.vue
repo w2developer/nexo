@@ -62,13 +62,7 @@
 
     // Controle dos modais
     const modalConcluirAberto = ref(false);
-    const modalEditarAberto = ref(false);
     const matriculaSelecionada = ref(null);
-
-    const abrirModalEditar = (item) => {
-        matriculaSelecionada.value = item;
-        modalEditarAberto.value = true;
-    };
 
     const abrirModalConcluir = (item) => {
         matriculaSelecionada.value = item;
@@ -356,13 +350,12 @@
                 </div>
             </CardContent>
         </Card>
+        <br>
+        <br>
+        <br>
+        <br>
 
         <!-- Modais Extraídos -->
-        <ModalEditarAluno 
-            v-model="modalEditarAberto" 
-            :matricula="matriculaSelecionada" 
-            @salvo="buscarAlunos(true)" 
-        />
 
         <ModalConcluirAluno 
             v-model="modalConcluirAberto" 

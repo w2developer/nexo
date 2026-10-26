@@ -1,3 +1,5 @@
+import sharedRoutes from '@/modules/shared/routers/sharedRoutes'
+
 export default [
     {
         path: '/professor',
@@ -8,44 +10,7 @@ export default [
                 path: 'presenca',
                 component: () => import('@/modules/professor/views/Presenca.vue'),
             },
-            {
-                path: 'alunos',
-                component: () => import('@/modules/professor/views/ControleAlunos.vue'),
-            },
-            {
-                path: 'concluidos',
-                component: () => import('@/modules/professor/views/ControleConcluidos.vue'),
-            },
-            {
-                path: 'configuracoes',
-                component: () => import('@/modules/professor/views/Configuracoes.vue'),
-            },
-            {
-                path: 'editar-aluno/:id',
-                name: 'ProfessorEditarAluno',
-                component: () => import('@/modules/professor/views/EditarAluno.vue'),
-            },
-            {
-                path: 'mensagens',
-                name: 'professor-mensagens',
-                component: () => import('@/modules/chat/MensagensEquipe.vue'),
-                meta: { title: 'Mensagens' }
-            },
-            {
-                path: 'horarios/:id',
-                name: 'ProfessorGerenciarHorarios',
-                component: () => import('../views/GerenciarHorarios.vue')
-            },
-            {
-                path: 'nova-matricula/:id',
-                name: 'ProfessorNovaMatricula',
-                component: () => import('@/modules/professor/views/NovaMatricula.vue')
-            },
-            {
-                path: 'cadastrar-aluno',
-                name: 'CadastrarAluno',
-                component: () => import('@/modules/professor/views/CadastrarAluno.vue')
-            }
+            ...sharedRoutes,
         ],
     },
 ]

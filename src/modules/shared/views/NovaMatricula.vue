@@ -27,6 +27,7 @@
     const salvando = ref(false);
     const aluno = ref(null);
     const todosCursos = ref([]);
+    const tipoUsuario = ref(null)
 
     // Estado do formulário
     const form = ref({
@@ -119,7 +120,7 @@
             if (error) throw error;
 
             toast.success("Sucesso", "Matrícula criada! Defina agora os horários.");
-            router.replace(`/professor/horarios/${novaMatricula.id}`);
+            router.replace(`/${tipoUsuario.value}/horarios/${novaMatricula.id}`);
         } catch (err) {
             console.error("Erro ao criar matrícula:", err);
             toast.error("Erro", "Não foi possível criar a matrícula.");
@@ -127,6 +128,15 @@
             salvando.value = false;
         }
     };
+
+    // 2. Acesse o sessionStorage ee pega o tipo de user
+    onMounted(() => {
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        
+        if (sessionUsuario !== null) {
+            tipoUsuario.value = sessionUsuario
+        }
+    })
 
     onMounted(carregarDados);
 </script>
@@ -212,7 +222,6 @@
             <!-- Formulário 2x2 -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                    <BookOpen class="w-5 h-5 text-slate-500" />
                     <h3 class="font-bold text-base text-slate-900">Dados da Nova Matrícula</h3>
                 </CardHeader>
 

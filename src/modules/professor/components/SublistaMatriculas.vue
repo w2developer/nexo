@@ -33,7 +33,7 @@
                             <TableHead class="pl-4 text-xs">Curso</TableHead>
                             <TableHead class="text-xs">Situação</TableHead>
                             <TableHead class="text-xs">Início</TableHead>
-                            <TableHead class="text-xs">Término/Conclusão</TableHead>
+                            <!-- <TableHead class="text-xs">Término/Conclusão</TableHead> -->
                             <TableHead class="text-xs text-end pr-4">Gerenciar</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -54,9 +54,9 @@
                             <TableCell class="py-2 text-sm text-slate-500">
                                 {{ formatarDataBR(mat.data_inicio) }}
                             </TableCell>
-                            <TableCell class="py-2 text-sm text-slate-500">
+                            <!-- <TableCell class="py-2 text-sm text-slate-500">
                                 {{ formatarDataBR(mat.data_conclusao || mat.data_fim) }}
-                            </TableCell>
+                            </TableCell> -->
                             <TableCell class="pr-4 py-2 text-end">
                                 <Button 
                                     size="sm" 

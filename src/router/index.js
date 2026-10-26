@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Rotas de Alunos
 import alunoRoutes from '@/modules/aluno/routers/alunoRoutes.js'
 import professorRoutes from '@/modules/professor/routers/professorRoutes.js'
+import secretariaRoutes from '@/modules/secretaria/routers/secretariaRoutes.js'
 
 const routes = [
     // Redireciona a raiz para o painel correto ou login
@@ -17,7 +18,7 @@ const routes = [
             const rotasIniciais = {
                 aluno: '/aluno/painel',
                 professor: '/professor/presenca',
-                secretaria: '/secretaria',
+                secretaria: '/secretaria/dashboard',
                 admin: '/admin',
             }
 
@@ -42,11 +43,7 @@ const routes = [
     ...professorRoutes,
 
     // Rotas Secretaria
-    // {
-    //     path: '/secretaria',
-    //     component: () => import('../views/secretaria/Home.vue'),
-    //     meta: { roles: ['secretaria', 'admin'] },
-    // },
+    ...secretariaRoutes,
 
     // Rotas Admin (Acesso total)
     // {
@@ -74,7 +71,7 @@ router.beforeEach((to, from) => {
         // Manda de volta para a respectiva tela inicial
         if (tipo === 'aluno') return '/aluno/painel'
         if (tipo === 'professor') return '/professor/presenca'
-        if (tipo === 'secretaria') return '/secretaria'
+        if (tipo === 'secretaria') return '/secretaria/dashboard'
         if (tipo === 'admin') return '/admin'
     }
 
