@@ -23,7 +23,7 @@ const navigation = inject('navigation')
         <!-- Header -->
         <div class="flex h-16 items-center justify-between border-b border-border px-4">
             <span class="font-bold text-foreground">NexoZ</span>
-            <Button variant="ghost" size="icon" class="md:hidden" @click="toggleMobile">
+            <Button variant="ghost" size="icon" class="lg:hidden" @click="toggleMobile">
                 <X class="h-5 w-5" />
             </Button>
         </div>

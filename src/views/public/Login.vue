@@ -89,7 +89,7 @@ const handleLogin = async () => {
         const rotasIniciais = {
             aluno: '/aluno/painel',
             professor: '/professor/presenca',
-            secretaria: '/secretaria',
+            secretaria: '/secretaria/dashboard',
             admin: '/admin',
         }
 

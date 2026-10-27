@@ -86,7 +86,7 @@
 </script>
 
 <template>
-    <div class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end font-sans">
+    <div class="fixed bottom-6 left-6 z-[9999] flex flex-col items-start font-sans">
         <!-- Janela do Widget -->
         <div 
             v-if="widgetAberto" 
@@ -127,10 +127,13 @@
                             <div class="text-xs text-slate-500 mt-0.5 capitalize">{{ colega.tipo || 'Colaborador' }}</div>
                         </div>
 
-                        <!-- Badge de Mensagens Não Lidas (Opcional) -->
-                        <!-- Mostra a bolinha se o contador for maior que 0 -->
-                        <span v-if="naoLidasGlobais[colega.id] > 0" class="badge">
-                            {{ naoLidasGlobais[colega.id] }}
+                        <!-- Indicador pulsante de mensagem não lida -->
+                        <span
+                            v-if="naoLidasGlobais[colega.id] > 0"
+                            class="relative flex w-2.5 h-2.5 shrink-0"
+                        >
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full w-2.5 h-2.5 bg-red-600"></span>
                         </span>
                     </button>
 
@@ -277,31 +280,64 @@
             </template>
         </div>
 
-        <!-- Botão Principal Flutuante -->
-        <button 
-            @click="toggleWidget"
-            class="w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center"
+    <!-- Botão Principal Flutuante -->
+    <button 
+        @click="toggleWidget"
+        class="relative w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center"
+    >
+        <!-- Balão de Nova Mensagem -->
+        <div 
+            v-if="temMensagemNaoLida && !widgetAberto" 
+            class="absolute -top-10 left-0 bg-slate-800 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap flex items-center gap-2 pointer-events-none"
         >
-            <div v-if="temMensagemNaoLida && !widgetAberto" class="indicador-msg">
-                Nova Mensagem
-            </div>
-            <X class="w-6 h-6" v-if="widgetAberto" />
-            <MessageCircle class="w-6 h-6" v-else />
-        </button>
+            <!-- Bolinha vermelha pulsante -->
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+
+            Nova Mensagem
+
+            <!-- Setinha apontando para baixo -->
+            <span class="
+                absolute -bottom-1 left-5 
+                w-2 h-2 bg-slate-800 rotate-45
+            "></span>
+        </div>
+
+        <X class="w-6 h-6" v-if="widgetAberto" />
+        <MessageCircle class="w-6 h-6" v-else />
+    </button>
     </div>
 </template>
 
 <style scoped>
-    .indicador-msg {
-        position: absolute;
-        top: -10px;
-        right: -10px;
-        background-color: red;
-        color: white;
-        font-size: 10px;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-weight: bold;
-        white-space: nowrap;
+.indicador-msg {
+    position: absolute;
+    top: -12px;
+    left: 28px; /* Joga o aviso para a direita para não cortar na borda da tela */
+    background: #ff4b2b; /* Gradiente moderno */
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 4px 10px;
+    border-radius: 999px; /* Formato pílula perfeito */
+    border: 2px solid #ffffff; /* Recorte visual sobre o botão roxo */
+    box-shadow: 0 4px 10px rgba(255, 65, 108, 0.35); /* Sombra suave colorida */
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none; /* Evita bloquear o clique no botão */
+    animation: flutuando 2s infinite ease-in-out;
+}
+
+/* Animação suave para chamar atenção sem irritar */
+@keyframes flutuando {
+    0%, 100% {
+        transform: translateY(0);
     }
+    50% {
+        transform: translateY(-3px);
+    }
+}
 </style>
