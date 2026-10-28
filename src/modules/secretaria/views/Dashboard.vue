@@ -26,6 +26,7 @@
     import TableBody from '@/components/ui/TableBody.vue';
     import TableRow from '@/components/ui/TableRow.vue';
     import TableCell from '@/components/ui/TableCell.vue';
+    import Tooltip from '@/components/ui/Tooltip.vue';
     import ModalConcluirAluno from '@/modules/professor/components/ModalConcluirAluno.vue';
 
     const router = useRouter();
@@ -431,7 +432,7 @@
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
                                         <span class="text-xs text-slate-500 truncate">
-                                            {{ item.curso?.nome }} • Cód: {{ item.aluno?.codigo }}
+                                            {{ item.curso?.nome }}
                                         </span>
                                     </div>
                                 </div>
@@ -440,11 +441,14 @@
                             <TableCell class="text-center hidden sm:table-cell">
                                 <div class="flex flex-col items-center">
                                     <span class="text-sm font-semibold text-rose-600">
-                                        Há {{ item.diasAusente }} dias sem vir
+                                        
                                     </span>
-                                    <span class="text-xs text-slate-400">
-                                        {{ item.ultimaPresenca ? `Última: ${formatarDataBR(item.ultimaPresenca)}` : 'Nunca compareceu' }}
-                                    </span>
+                                    
+                                    <Tooltip :content="`Há ${item.diasAusente} dias sem vir`" position="top">
+                                        <span class="text-xs text-slate-400 cursor-help">
+                                            {{ item.ultimaPresenca ? `${formatarDataBR(item.ultimaPresenca)}` : '---' }}
+                                        </span>
+                                    </Tooltip>
                                 </div>
                             </TableCell>
 
@@ -455,7 +459,7 @@
                                         variant="destructive" 
                                         class="text-[10px]"
                                     >
-                                        Aguardando 1º Contato
+                                        Nenhum Contato
                                     </Badge>
 
                                     <Badge 
@@ -471,7 +475,7 @@
                                         variant="secondary" 
                                         class="bg-blue-50 text-blue-700 border-blue-200 text-[10px]"
                                     >
-                                        Contatado (Aguardando)
+                                        Contatado
                                     </Badge>
 
                                     <!-- Botão discreto para abrir o modal e ler as observações -->
@@ -483,23 +487,26 @@
                                         title="Clique para ver o histórico de observações"
                                     >
                                         <MessageSquare class="w-3 h-3" />
-                                        <span>Último: {{ formatarDataBR(item.ultimoContato) }} ({{ item.historicoContatos.length }}x)</span>
+                                        <span>{{ formatarDataBR(item.ultimoContato) }} ({{ item.historicoContatos.length }}x)</span>
                                     </button>
                                 </div>
                             </TableCell>
 
                             <TableCell class="pr-4 py-2 text-end">
                                 <div class="flex items-center justify-end gap-2">
-                                    <Button 
-                                        size="sm" 
-                                        :variant="item.statusContato === 'aguardando' ? 'outline' : 'default'"
-                                        @click="abrirModalContato(item)"
-                                    >
-                                        <PhoneCall class="w-3.5 h-3.5 sm:mr-1.5" />
-                                        <span class="hidden sm:inline">
-                                            {{ item.ultimoContato ? 'Novo Contato' : 'Registrar Contato' }}
-                                        </span>
-                                    </Button>
+                                    
+                                    <Tooltip :content="item.ultimoContato ? 'Novo Contato' : 'Registrar Contato'" position="top">
+                                        <Button 
+                                            size="sm" 
+                                            :variant="item.statusContato === 'aguardando' ? 'outline' : 'default'"
+                                            @click="abrirModalContato(item)"
+                                        >
+                                            <PhoneCall size="14"/>
+                                            <!-- <span class="hidden sm:inline">
+                                                {{ item.ultimoContato ? 'Novo Contato' : 'Registrar Contato' }}
+                                            </span> -->
+                                        </Button>
+                                    </Tooltip>
 
                                     <Button 
                                         size="sm" 

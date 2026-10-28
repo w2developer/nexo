@@ -2,6 +2,7 @@
     import { ref, watch, nextTick } from 'vue';
     import { MessageCircle, X, Send, ChevronLeft, User, Trash2, ThumbsUp, AtSign, Search } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
+    import Avatar from '../ui/Avatar.vue';
 
     const { 
         colegas,             
@@ -140,6 +141,22 @@
 
         return textoSeguro.replace(/\*(.*?)\*/gs, '<strong>$1</strong>');
     };
+
+    // Dicionário de cargos
+    const formatadorCargos = {
+        'professor': 'Professor (a)',
+        'secretaria': 'Secretário (a)',
+        'admin': 'Administrador (a)',
+        'aluno': 'Aluno (a)'
+    }
+
+    // Formata o cargo recebido
+    const formatarCargo = (tipo) => {
+        if (!tipo) return 'Colaborador'
+        
+        const tipoLimpo = tipo.toLowerCase()
+        return formatadorCargos[tipoLimpo] || (tipo.charAt(0).toUpperCase() + tipo.slice(1))
+    }
 </script>
 
 <template>
@@ -180,17 +197,22 @@
                         class="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50/50 cursor-pointer"
                     >
                         <div class="relative shrink-0">
-                            <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center">
+                            <Avatar :name="colega.nome"></Avatar>
+                            <!-- <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center">
                                 <User class="w-6 h-6" />
-                            </div>
+                            </div> -->
                             <div 
                                 class="absolute bottom-0 right-0 w-3.5 h-3.5 border-2 border-white rounded-full transition-colors duration-300"
                                 :class="usuariosOnline.includes(colega.id) ? 'bg-emerald-500' : 'bg-slate-300'"
                             ></div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <div class="font-semibold text-sm text-slate-800 truncate">{{ colega.nome }}</div>
-                            <div class="text-xs text-slate-500 mt-0.5 capitalize">{{ colega.tipo || 'Colaborador' }}</div>
+                            <div class="font-semibold text-sm text-slate-800 truncate">
+                                {{ colega.tipo?.toLowerCase() === 'admin' ? 'Relatar Problemas' : colega.nome }}
+                            </div>
+                            <div class="text-xs text-slate-500 mt-0.5">
+                                {{ formatarCargo(colega.tipo) }}
+                            </div>
                         </div>
 
                         <!-- Indicador de mensagem não lida por contato -->
