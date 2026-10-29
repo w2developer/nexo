@@ -1,5 +1,5 @@
 <script setup>
-    import { ref, onMounted } from 'vue';
+    import { ref, onMounted, watch } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
     import { ArrowLeft, Save, Calendar, User, BookOpen, Clock, ChevronRight } from '@lucide/vue';
@@ -27,7 +27,7 @@
     const salvando = ref(false);
     const cursosOpcoes = ref([]);
     const matriculaExpandida = ref(null);
-    const tipoUsuario = ref(null)
+    const tipoUsuario = ref(null);
 
     // Dados do aluno
     const formAluno = ref({
@@ -47,6 +47,17 @@
         { label: 'Trancado', value: 'trancado' },
         { label: 'Cancelado', value: 'cancelado' }
     ];
+
+    // Sincroniza situação das matrículas ao alterar status do aluno
+    watch(() => formAluno.value.ativo, (novoStatus) => {
+        if (carregando.value) return;
+
+        matriculas.value.forEach(mat => {
+            if (mat.situacao !== 'cancelado' && mat.situacao !== 'concluido') {
+                mat.situacao = novoStatus ? 'cursando' : 'trancado';
+            }
+        });
+    });
 
     // Abre ou fecha a matrícula clicada
     const toggleMatricula = (id) => {
@@ -213,16 +224,12 @@
         }
     };
 
-    // 2. Acesse o sessionStorage ee pega o tipo de user
     onMounted(() => {
-        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
-        
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario');
         if (sessionUsuario !== null) {
-            tipoUsuario.value = sessionUsuario
+            tipoUsuario.value = sessionUsuario;
         }
-    })
 
-    onMounted(() => {
         buscarCursos();
         carregarDados();
     });
