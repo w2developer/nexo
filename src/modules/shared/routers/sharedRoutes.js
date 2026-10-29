@@ -16,6 +16,11 @@ export default [
         component: () => import('@/modules/shared/views/GerenciarHorarios.vue')
     },
     {
+        path: 'presencas/:id',
+        component: () => import('@/modules/shared/views/HistoricoPresencas.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: 'nova-matricula/:id',
         component: () => import('@/modules/shared/views/NovaMatricula.vue')
     },

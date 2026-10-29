@@ -2,7 +2,7 @@
     import { ref, onMounted, watch } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { ArrowLeft, Save, Calendar, User, BookOpen, Clock, ChevronRight } from '@lucide/vue';
+    import { ArrowLeft, Save, Calendar, BookOpen, Clock, ChevronRight, History } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
     import { formatarDataBR } from '@/utils/dateHelpers';
@@ -47,6 +47,19 @@
         { label: 'Trancado', value: 'trancado' },
         { label: 'Cancelado', value: 'cancelado' }
     ];
+
+    // Retorna a data local no formato YYYY-MM-DD
+    const getDataHojeISO = () => {
+        const hoje = new Date();
+        const offset = hoje.getTimezoneOffset() * 60000;
+        return new Date(hoje.getTime() - offset).toISOString().split('T')[0];
+    };
+
+    // Atualiza data de conclusão ao mudar situação da matrícula
+    const aoAlterarSituacao = (mat, novaSituacao) => {
+        mat.situacao = novaSituacao;
+        mat.data_conclusao = novaSituacao === 'concluido' ? getDataHojeISO() : null;
+    };
 
     // Sincroniza situação das matrículas ao alterar status do aluno
     watch(() => formAluno.value.ativo, (novoStatus) => {
@@ -95,7 +108,7 @@
         }
     };
 
-    // Busca dados do aluno e matrículas
+    // Busca dados do aluno, matrículas e presenças
     const carregarDados = async () => {
         carregando.value = true;
         try {
@@ -105,7 +118,10 @@
                     id, nome, codigo, ativo,
                     matricula (
                         id, curso_id, situacao, responsavel,
-                        data_inicio, data_fim, ead, horario
+                        data_inicio, data_fim, data_conclusao, ead, horario,
+                        registro_presenca (
+                            id, data_presenca, criado_em
+                        )
                     )
                 `)
                 .eq('id', alunoId)
@@ -128,6 +144,12 @@
             });
 
             matriculas.value = listaOrdenada.map(mat => {
+                // Ordena presenças para pegar a mais recente
+                const presencas = (mat.registro_presenca || []).sort((a, b) => {
+                    return new Date(b.data_presenca) - new Date(a.data_presenca);
+                });
+                const ultimaPresenca = presencas[0] || null;
+
                 const itemFormatado = {
                     id: mat.id,
                     curso_id: mat.curso_id,
@@ -135,15 +157,19 @@
                     responsavel: mat.responsavel || '',
                     data_inicio: mat.data_inicio ? mat.data_inicio.split('T')[0] : '',
                     data_fim: mat.data_fim ? mat.data_fim.split('T')[0] : '',
+                    data_conclusao: mat.data_conclusao ? mat.data_conclusao.split('T')[0] : null,
+                    ultima_presenca_id: ultimaPresenca ? ultimaPresenca.id : null,
+                    ultima_presenca: ultimaPresenca ? ultimaPresenca.data_presenca.split('T')[0] : '',
                     ead: Boolean(mat.ead),
                     horario: mat.horario
                 };
-                // Guarda snapshot para só salvar no banco o que for editado
+
+                // Guarda snapshot para salvar apenas o que foi editado
                 matriculasOriginais.value[mat.id] = JSON.stringify(itemFormatado);
                 return itemFormatado;
             });
 
-            // Se vier ?matricula=ID na URL abre ela; se tiver só 1, abre automático
+            // Abre matrícula da query ou a única existente
             if (route.query.matricula) {
                 matriculaExpandida.value = Number(route.query.matricula);
             } else if (matriculas.value.length === 1) {
@@ -158,7 +184,7 @@
         }
     };
 
-    // Salva aluno e apenas matrículas modificadas
+    // Salva aluno, matrículas modificadas e última presença
     const salvarAlteracoes = async () => {
         if (!formAluno.value.nome.trim() || !formAluno.value.codigo.trim()) {
             toast.error("Atenção", "Nome e código do aluno são obrigatórios.");
@@ -193,12 +219,19 @@
                 return;
             }
 
-            // 2. Filtra e atualiza apenas as matrículas que sofreram alteração
+            // 2. Filtra apenas matrículas modificadas
             const alteradas = matriculas.value.filter(
                 mat => JSON.stringify(mat) !== matriculasOriginais.value[mat.id]
             );
 
             for (const mat of alteradas) {
+                const original = JSON.parse(matriculasOriginais.value[mat.id]);
+
+                // Define data atual se mudou para concluído
+                const dataConclusaoFinal = mat.situacao === 'concluido'
+                    ? (original.situacao !== 'concluido' || !mat.data_conclusao ? getDataHojeISO() : mat.data_conclusao)
+                    : null;
+
                 const { error: erroMat } = await supabase
                     .from('matricula')
                     .update({
@@ -207,11 +240,40 @@
                         responsavel: mat.responsavel?.trim() || null,
                         data_inicio: mat.data_inicio,
                         data_fim: mat.data_fim || null,
+                        data_conclusao: dataConclusaoFinal,
                         ead: mat.ead
                     })
                     .eq('id', mat.id);
 
                 if (erroMat) throw erroMat;
+
+                // 3. Atualiza, insere ou remove a última presença se foi alterada
+                if (mat.ultima_presenca !== original.ultima_presenca) {
+                    if (mat.ultima_presenca_id && mat.ultima_presenca) {
+                        const { error: erroPres } = await supabase
+                            .from('registro_presenca')
+                            .update({ data_presenca: mat.ultima_presenca })
+                            .eq('id', mat.ultima_presenca_id);
+
+                        if (erroPres) throw erroPres;
+                    } else if (!mat.ultima_presenca_id && mat.ultima_presenca) {
+                        const { error: erroPres } = await supabase
+                            .from('registro_presenca')
+                            .insert({
+                                matricula_id: mat.id,
+                                data_presenca: mat.ultima_presenca
+                            });
+
+                        if (erroPres) throw erroPres;
+                    } else if (mat.ultima_presenca_id && !mat.ultima_presenca) {
+                        const { error: erroPres } = await supabase
+                            .from('registro_presenca')
+                            .delete()
+                            .eq('id', mat.ultima_presenca_id);
+
+                        if (erroPres) throw erroPres;
+                    }
+                }
             }
 
             toast.success("Sucesso", "Dados atualizados com sucesso!");
@@ -382,8 +444,8 @@
                                 </div>
                             </div>
 
-                            <!-- Direita: Modalidade / Horas + Botão de Horários -->
-                            <div class="flex items-center gap-2.5 shrink-0" @click.stop>
+                            <!-- Direita: Modalidade / Horas + Botões de Ação -->
+                            <div class="flex items-center gap-2 shrink-0" @click.stop>
                                 <Badge v-if="mat.ead" variant="secondary" class="text-xs">
                                     EAD
                                 </Badge>
@@ -391,6 +453,16 @@
                                     <Clock class="w-3 h-3" />
                                     {{ contarHorasMatricula(mat.horario) }}h
                                 </Badge>
+
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    class="bg-white h-8 px-2.5 text-xs"
+                                    @click="router.push(`/${tipoUsuario}/presencas/${mat.id}`)"
+                                >
+                                    <History class="w-3.5 h-3.5 sm:mr-1.5" />
+                                    <span class="hidden sm:inline">Presenças</span>
+                                </Button>
 
                                 <Button 
                                     size="sm" 
@@ -422,7 +494,8 @@
 
                                         <FormGroup label="Situação da Matrícula" :id="`situacao-${mat.id}`">
                                             <Select 
-                                                v-model="mat.situacao" 
+                                                :modelValue="mat.situacao"
+                                                @update:modelValue="(val) => aoAlterarSituacao(mat, val)"
                                                 :options="situacaoOpcoes" 
                                             />
                                         </FormGroup>
@@ -458,6 +531,10 @@
 
                                         <FormGroup label="Previsão de Término" :id="`fim-${mat.id}`">
                                             <Input v-model="mat.data_fim" type="date" />
+                                        </FormGroup>
+
+                                        <FormGroup label="Última Presença" :id="`presenca-${mat.id}`">
+                                            <Input v-model="mat.ultima_presenca" type="date" />
                                         </FormGroup>
                                     </div>
                                 </div>
