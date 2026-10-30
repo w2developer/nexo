@@ -24,11 +24,6 @@ const navigation = [
         icon: ListTodo,
     },
     {
-        title: 'Cadastrar Aluno',
-        to: '/professor/cadastrar-aluno',
-        icon: ListPlus,
-    },
-    {
         title: 'Controle de Alunos',
         to: '/professor/alunos',
         icon: List,
@@ -37,6 +32,11 @@ const navigation = [
         title: 'Controle de Concluídos',
         to: '/professor/concluidos',
         icon: ListChecks,
+    },
+    {
+        title: 'Cadastrar Aluno',
+        to: '/professor/cadastrar-aluno',
+        icon: ListPlus,
     },
     // {
     //     title: 'Mensagens',

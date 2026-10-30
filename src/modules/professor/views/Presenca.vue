@@ -6,6 +6,10 @@
 
     const router = useRouter();
 
+    const irParaDashboard = () => {
+        router.push('/professor/dashboard')
+    }
+
     const irParaEditarAluno = (item) => {
         // router.push(`/professor/editar-aluno/${item.aluno_id}`);
         router.push(`/professor/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
@@ -225,8 +229,9 @@
         </Card>
 
         <Card class="min-h-[100dvh] flex flex-col">
-            <CardHeader class="p-4 font-bold text-xl border-b border-border">
+            <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border">
                 <h2>Marcar Presença</h2>
+                <Button variant="outline" @click="irParaDashboard">Dashboard</Button>
             </CardHeader>
 
             <div v-if="carregandoAlunos" class="p-8 text-center text-muted-foreground">
