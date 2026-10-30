@@ -42,7 +42,7 @@
     const matriculasOriginais = ref({});
 
     const situacaoOpcoes = [
-        { label: 'No Aguardo', value: 'no_aguardo' },
+        { label: 'Aguardando', value: 'aguardando' },
         { label: 'Cursando', value: 'cursando' },
         { label: 'Concluído', value: 'concluido' },
         { label: 'Trancado', value: 'trancado' },
