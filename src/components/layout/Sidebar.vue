@@ -1,9 +1,16 @@
 <script setup>
 import { inject } from 'vue'
 import { X } from '@lucide/vue'
+import { useRouter } from 'vue-router'
 import { cn } from '../../utils/cn'
 import Button from '../ui/Button.vue'
 import SidebarItem from './SidebarItem.vue'
+
+const router = useRouter()
+
+const irParaHome = () => {
+    router.push('/')
+}
 
 // Injeta dependências
 const isMobileOpen = inject('isMobileOpen')
@@ -22,7 +29,12 @@ const navigation = inject('navigation')
     >
         <!-- Header -->
         <div class="flex h-16 items-center justify-between border-b border-border px-4">
-            <span class="font-bold text-foreground">NexoZ</span>
+            <img 
+                src="/logo.svg" 
+                alt="NexoZ Logo" 
+                class="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+                @click="irParaHome" 
+            />
             <Button variant="ghost" size="icon" class="lg:hidden" @click="toggleMobile">
                 <X class="h-5 w-5" />
             </Button>
