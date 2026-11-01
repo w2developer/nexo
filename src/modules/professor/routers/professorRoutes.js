@@ -10,6 +10,10 @@ export default [
                 path: 'presenca',
                 component: () => import('@/modules/professor/views/Presenca.vue'),
             },
+            {
+                path: 'dashboard',
+                component: () => import('@/modules/secretaria/views/Dashboard.vue'),
+            },
             ...sharedRoutes,
         ],
     },
