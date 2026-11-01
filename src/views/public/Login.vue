@@ -48,7 +48,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Key, LogIn, Loader2, AlertCircle } from '@lucide/vue'
-// Importa o cliente já configurado do seu arquivo lib
 import { supabase } from '@/lib/supabase'
 
 const router = useRouter()
@@ -71,12 +70,22 @@ const handleLogin = async () => {
         sessionStorage.setItem('token_acesso', data.token)
         sessionStorage.setItem('tipo_usuario', data.tipo)
 
-        if (data.nome) {
-            sessionStorage.setItem('nome_usuario', data.nome)
+        // Busca o nome diretamente do objeto usuario retornado pela API
+        if (data.usuario?.nome) {
+            sessionStorage.setItem('nome_usuario', data.usuario.nome)
         } else if (data.token) {
-            // Tenta extrair o nome direto do token JWT retornado
+            // Fallback seguro para UTF-8 caso precise ler o JWT
             try {
-                const payload = JSON.parse(atob(data.token.split('.')[1]))
+                const base64Url = data.token.split('.')[1]
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+                const jsonString = decodeURIComponent(
+                    atob(base64)
+                        .split('')
+                        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                        .join('')
+                )
+                const payload = JSON.parse(jsonString)
+                
                 if (payload?.nome) {
                     sessionStorage.setItem('nome_usuario', payload.nome)
                 }

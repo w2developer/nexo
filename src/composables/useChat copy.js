@@ -1,15 +1,12 @@
 import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
 
-// ==========================================
-// ESTADO GLOBAL (Partilhado por toda a App)
-// ==========================================
+// Estado global compartilhado entre componentes
 const colegas = ref([]);
 const mensagens = ref([]);
 const colegaAtivo = ref(null);
 const salaAtivaId = ref(null);
 const widgetAberto = ref(false);
-// Adicionado o campo 'tipo' ao estado do usuário
 const currentUser = ref({ id: null, nome: null, tipo: null });
 const carregando = ref(false);
 const usuariosOnline = ref([]);
@@ -21,7 +18,7 @@ let timeoutDigitacao = null;
 
 export function useChat() {
     
-    // Inicializa o chat e carrega dados base (Agora recebe o tipo)
+    // Inicializa sessão do chat, contadores e conexão WebSocket
     const initChat = async (userId, userName, userTipo) => {
         currentUser.value = { id: userId, nome: userName, tipo: userTipo };
         
@@ -33,7 +30,7 @@ export function useChat() {
         iniciarRealtime();
     };
 
-    // Busca a equipe
+    // Lista todos os colaboradores exceto o usuário logado
     const carregarColegas = async () => {
         if (!currentUser.value.id) return;
         
@@ -46,7 +43,27 @@ export function useChat() {
         if (data) colegas.value = data;
     };
 
-    // Abre conversa e zera não lidas
+    // Pesquisa alunos ativos por nome ou matrícula para anexar como assunto
+    const buscarAlunos = async (termo) => {
+        if (!termo || termo.trim().length < 2) return [];
+
+        const busca = termo.trim();
+        const { data, error } = await supabase
+            .from('aluno')
+            .select('id, nome, codigo')
+            .eq('ativo', true)
+            .or(`nome.ilike.%${busca}%,codigo.ilike.%${busca}%`)
+            .order('nome')
+            .limit(5);
+
+        if (error) {
+            console.error("Erro ao buscar alunos:", error);
+            return [];
+        }
+        return data || [];
+    };
+
+    // Localiza ou cria uma sala direta com o colega e carrega o histórico
     const abrirChatCom = async (colega) => {
         carregando.value = true;
         colegaAtivo.value = colega;
@@ -72,9 +89,10 @@ export function useChat() {
 
             salaAtivaId.value = salaExistente.id;
 
+            // Busca mensagens fazendo join com a tabela aluno quando houver menção
             const { data: historico } = await supabase
                 .from('chat_mensagem')
-                .select('*')
+                .select('*, aluno_mencionado:aluno(id, nome, codigo)')
                 .eq('sala_id', salaAtivaId.value)
                 .order('criado_em', { ascending: true });
 
@@ -89,27 +107,27 @@ export function useChat() {
         }
     };
 
-    // Envia mensagem
-    const enviarMensagem = async (texto) => {
+    // Insere nova mensagem no banco (com suporte opcional a aluno mencionado)
+    const enviarMensagem = async (texto, alunoMencionadoId = null) => {
         if (!salaAtivaId.value || !texto.trim()) return false;
 
-        // O insert agora possui o remetente_tipo obrigatório
         const novaMsg = {
             sala_id: salaAtivaId.value,
             remetente_id: currentUser.value.id,
             remetente_tipo: currentUser.value.tipo, 
             texto: texto.trim(),
+            aluno_mencionado_id: alunoMencionadoId,
             lida: false
         };
 
         const { data, error } = await supabase
             .from('chat_mensagem')
             .insert(novaMsg)
-            .select()
+            .select('*, aluno_mencionado:aluno(id, nome, codigo)')
             .single();
 
         if (error) {
-            console.error("ERRO DO SUPABASE NO INSERT:", error);
+            console.error("Erro ao enviar mensagem:", error);
             return false;
         }
 
@@ -117,81 +135,79 @@ export function useChat() {
             mensagens.value.push(data);
         }
 
-        await supabase.from('chat_sala').update({ atualizado_em: new Date().toISOString() }).eq('id', salaAtivaId.value);
+        await supabase
+            .from('chat_sala')
+            .update({ atualizado_em: new Date().toISOString() })
+            .eq('id', salaAtivaId.value);
+
         return true;
     };
 
-    // Exclui mensagem
+    // Remove mensagem permanentemente
     const excluirMensagem = async (msgId) => {
         mensagens.value = mensagens.value.filter(m => m.id !== msgId);
         await supabase.from('chat_mensagem').delete().eq('id', msgId);
     };
 
-    // Confirmar Like
+    // Alterna confirmação de leitura rápida (Like) com atualização otimista
     const confirmarLike = async (msgId) => {
-        // Localiza a mensagem
         const msg = mensagens.value.find(m => m.id === msgId);
         if (!msg) return;
 
-        // Alterna o estado local
         const novoStatus = !msg.like;
         msg.like = novoStatus;
 
-        // Salva no banco de dados
         const { error } = await supabase
             .from('chat_mensagem')
             .update({ like: novoStatus })
             .eq('id', msgId);
 
-        // Desfaz em caso de erro
         if (error) {
             msg.like = !novoStatus;
             console.error("Erro ao atualizar like:", error);
         }
     };
 
-    // Busca total de não lidas ao iniciar
-	const carregarNaoLidas = async () => {
-		if (!currentUser.value.id) return;
-		
-		// Busca salas do usuário atual
-		const { data: salas } = await supabase
-			.from('chat_sala')
-			.select('id')
-			.or(`usuario_a_id.eq.${currentUser.value.id},usuario_b_id.eq.${currentUser.value.id}`);
-			
-		if (!salas || salas.length === 0) return;
-		
-		const idsSalas = salas.map(s => s.id);
-		
-		// Conta mensagens não lidas enviadas por outros nessas salas
-		const { data: pendentes } = await supabase
-			.from('chat_mensagem')
-			.select('remetente_id')
-			.in('sala_id', idsSalas)
-			.eq('lida', false)
-			.neq('remetente_id', currentUser.value.id);
-			
-		if (pendentes) {
-			// Agrupa contagem pelo ID do colega
-			pendentes.forEach(msg => {
-				const id = msg.remetente_id;
-				naoLidasGlobais.value[id] = (naoLidasGlobais.value[id] || 0) + 1;
-			});
-		}
-	};
+    // Contabiliza mensagens não lidas de todas as salas do usuário
+    const carregarNaoLidas = async () => {
+        if (!currentUser.value.id) return;
+        
+        const { data: salas } = await supabase
+            .from('chat_sala')
+            .select('id')
+            .or(`usuario_a_id.eq.${currentUser.value.id},usuario_b_id.eq.${currentUser.value.id}`);
+            
+        if (!salas || salas.length === 0) return;
+        
+        const idsSalas = salas.map(s => s.id);
+        
+        const { data: pendentes } = await supabase
+            .from('chat_mensagem')
+            .select('remetente_id')
+            .in('sala_id', idsSalas)
+            .eq('lida', false)
+            .neq('remetente_id', currentUser.value.id);
+            
+        if (pendentes) {
+            pendentes.forEach(msg => {
+                const id = msg.remetente_id;
+                naoLidasGlobais.value[id] = (naoLidasGlobais.value[id] || 0) + 1;
+            });
+        }
+    };
 
-    // Atualiza status para lida
+    // Marca mensagens recebidas na sala ativa como lidas
     const marcarMensagensComoLidas = async () => {
-        const mensagensNaoLidas = mensagens.value.filter(m => m.remetente_id !== currentUser.value.id && !m.lida);
+        const mensagensNaoLidas = mensagens.value.filter(
+            m => m.remetente_id !== currentUser.value.id && !m.lida
+        );
         if (mensagensNaoLidas.length === 0) return;
 
         mensagensNaoLidas.forEach(m => m.lida = true);
 
-        // Zera contador do colega ativo
-		if (colegaAtivo.value) {
-			naoLidasGlobais.value[colegaAtivo.value.id] = 0; 
-		}
+        if (colegaAtivo.value) {
+            naoLidasGlobais.value[colegaAtivo.value.id] = 0; 
+        }
 
         await supabase
             .from('chat_mensagem')
@@ -201,7 +217,7 @@ export function useChat() {
             .eq('lida', false);
     };
 
-    // Emite evento de digitação
+    // Dispara evento broadcast de digitação para a sala atual
     const sinalizarDigitacao = () => {
         if (!salaAtivaId.value || !canalGlobal) return;
 
@@ -212,9 +228,8 @@ export function useChat() {
         });
     };
 
-    // Gerencia WebSocket (Presence, Broadcasts e DB)
+    // Configura listeners de Presence, Broadcast e alterações no banco via WebSocket
     const iniciarRealtime = () => {
-        // Limpa canal anterior para evitar o erro "cannot add presence after subscribe"
         if (canalGlobal) {
             supabase.removeChannel(canalGlobal);
             canalGlobal = null;
@@ -232,7 +247,9 @@ export function useChat() {
             .on('broadcast', { event: 'digitando' }, (payload) => {
                 const { sala_id, usuario_id } = payload.payload;
                 if (sala_id === salaAtivaId.value && usuario_id !== currentUser.value.id) {
-                    if (!quemEstaDigitando.value.includes(usuario_id)) quemEstaDigitando.value.push(usuario_id);
+                    if (!quemEstaDigitando.value.includes(usuario_id)) {
+                        quemEstaDigitando.value.push(usuario_id);
+                    }
                     
                     clearTimeout(timeoutDigitacao);
                     timeoutDigitacao = setTimeout(() => {
@@ -240,10 +257,21 @@ export function useChat() {
                     }, 3000);
                 }
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensagem' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensagem' }, async (payload) => {
                 const nova = payload.new;
                 if (salaAtivaId.value === nova.sala_id) {
-                    if (!mensagens.value.find(m => m.id === nova.id)) mensagens.value.push(nova);
+                    if (!mensagens.value.find(m => m.id === nova.id)) {
+                        // Se a mensagem recebida via Realtime tiver aluno vinculado, busca os dados dele
+                        if (nova.aluno_mencionado_id) {
+                            const { data: aluno } = await supabase
+                                .from('aluno')
+                                .select('id, nome, codigo')
+                                .eq('id', nova.aluno_mencionado_id)
+                                .single();
+                            nova.aluno_mencionado = aluno || null;
+                        }
+                        mensagens.value.push(nova);
+                    }
                     if (nova.remetente_id !== currentUser.value.id) marcarMensagensComoLidas();
                 } else if (nova.remetente_id !== currentUser.value.id) {
                     naoLidasGlobais.value[nova.remetente_id] = (naoLidasGlobais.value[nova.remetente_id] || 0) + 1;
@@ -254,7 +282,13 @@ export function useChat() {
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_mensagem' }, (payload) => {
                 const index = mensagens.value.findIndex(m => m.id === payload.new.id);
-                if (index !== -1) mensagens.value[index] = payload.new;
+                if (index !== -1) {
+                    // Mescla os dados para não perder o objeto 'aluno_mencionado' já carregado
+                    mensagens.value[index] = {
+                        ...mensagens.value[index],
+                        ...payload.new
+                    };
+                }
             });
 
         canalGlobal.subscribe(async (status) => {
@@ -278,6 +312,7 @@ export function useChat() {
     return {
         colegas, mensagens, colegaAtivo, widgetAberto, currentUser, carregando,
         usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId, temMensagemNaoLida,
-        initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem, confirmarLike, sinalizarDigitacao
+        initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem, 
+        confirmarLike, sinalizarDigitacao, buscarAlunos
     };
 }
