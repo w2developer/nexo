@@ -132,7 +132,7 @@
                     v-if="isOpen"
                     ref="dropdownRef"
                     :style="dropdownStyle"
-                    class="max-h-60 overflow-auto rounded-md border border-border bg-white p-1 text-popover-foreground shadow-md focus:outline-none"
+                    class="max-h-60 overflow-auto rounded-md border border-border bg-background p-1 text-popover-foreground shadow-md focus:outline-none"
                 >
                     <li
                         v-if="options.length === 0"

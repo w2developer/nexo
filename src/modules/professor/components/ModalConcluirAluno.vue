@@ -55,7 +55,7 @@
         size="md"
     >
         <div class="space-y-4">
-            <p class="text-sm font-medium text-slate-900">
+            <p class="text-sm font-medium text-foreground">
                 Deseja realmente concluir a matrícula de {{ matricula?.aluno?.nome }}?
             </p>
             <p class="text-sm text-muted-foreground">

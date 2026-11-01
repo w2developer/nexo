@@ -1,3 +1,4 @@
+<!-- src\components\ui\Switch.vue -->
 <script setup>
     import { computed } from 'vue';
     import { cn } from '@/utils/cn';

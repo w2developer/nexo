@@ -1,7 +1,7 @@
 <script setup>
     import { ref, computed, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Search, ChevronRight, Menu, UserPen, UserX, UserCheck, BookOpen } from '@lucide/vue';
+    import { Search, ChevronRight, Menu, UserPen, UserX, UserCheck, BookOpen, Trash2 } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome } from '@/utils/formatters';
     import { useRouter } from 'vue-router';
@@ -17,21 +17,23 @@
     import Input from '@/components/ui/Input.vue';
     import Badge from '@/components/ui/Badge.vue';
     import Avatar from '@/components/ui/Avatar.vue';
-
+    
     import SublistaMatriculas from '../components/SublistaMatriculas.vue';
+    import ModalExcluirAluno from '../components/ModalExcluirAluno.vue';
 
     // Estados
     const alunos = ref([]);
-    const tipoUsuario = ref(null)
+    const tipoUsuario = ref(null);
     const carregando = ref(true);
     const termoPesquisa = ref('');
     const linhaExpandida = ref(null);
+    const modalExclusaoAberto = ref(false);
+    const alunoParaExcluir = ref(null);
     let realtimeChannel;
 
     const irParaNovaMatricula = (aluno) => {
         router.push(`/${tipoUsuario.value}/nova-matricula/${aluno.id}`);
     };
-
 
     // Ações da interface
     const toggleLinha = (id) => {
@@ -44,6 +46,20 @@
 
     const abrirModalEdicaoMatricula = (matricula, idDoAluno) => {
         router.push(`/${tipoUsuario.value}/editar-aluno/${idDoAluno}?matricula=${matricula.id}`);
+    };
+
+    // Abre o modal de exclusão com o aluno selecionado
+    const abrirModalExclusao = (aluno) => {
+        alunoParaExcluir.value = aluno;
+        modalExclusaoAberto.value = true;
+    };
+
+    // Remove o aluno da lista local após confirmar exclusão
+    const removerAlunoDaLista = (idExcluido) => {
+        alunos.value = alunos.value.filter(aluno => aluno.id !== idExcluido);
+        if (linhaExpandida.value === idExcluido) {
+            linhaExpandida.value = null;
+        }
     };
 
     // Busca de dados
@@ -83,14 +99,14 @@
         );
     });
 
-    // 2. Acesse o sessionStorage ee pega o tipo de user
+    // Recupera o tipo de usuário da sessão
     onMounted(() => {
-        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario');
         
         if (sessionUsuario !== null) {
-            tipoUsuario.value = sessionUsuario
+            tipoUsuario.value = sessionUsuario;
         }
-    })
+    });
 
     // Ciclo de vida e Realtime
     onMounted(() => {
@@ -99,6 +115,9 @@
         realtimeChannel = supabase
             .channel('controle_geral_changes')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'aluno' }, () => {
+                buscarAlunos(true);
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'aluno' }, () => {
                 buscarAlunos(true);
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matricula' }, () => {
@@ -213,11 +232,17 @@
                                             <BookOpen class="w-4 h-4" /> Nova Matrícula
                                         </button>
                                         <hr class="my-1 border-border" />
-                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer">
                                             <UserX class="w-4 h-4" /> Desativar Aluno
                                         </button>
                                         <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer">
                                             <UserCheck class="w-4 h-4" /> Reativar Aluno
+                                        </button>
+                                        <button
+                                            @click="abrirModalExclusao(aluno)"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        >
+                                            <Trash2 class="w-4 h-4" /> Excluir Aluno
                                         </button>
                                     </template>
                                 </Dropdown>
@@ -240,6 +265,14 @@
                 </div>
             </div>
         </Card>
+
+        <!-- Modal de Exclusão Auditada -->
+        <ModalExcluirAluno
+            v-model="modalExclusaoAberto"
+            :aluno="alunoParaExcluir"
+            @excluido="removerAlunoDaLista"
+        />
+
         <br>
         <br>
         <br>

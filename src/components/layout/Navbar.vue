@@ -1,10 +1,14 @@
 <script setup>
 import { inject, ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu, User, Settings, LogOut } from '@lucide/vue'
+import { Menu, User, Settings, LogOut, Moon, Sun } from '@lucide/vue'
 import Button from '../ui/Button.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import Breadcrumb from '../ui/Breadcrumb.vue'
+import Switch from '@/components/ui/Switch.vue';
+import { useTheme } from '@/composables/useTheme';
+
+const { isDark } = useTheme();
 
 const toggleMobile = inject('toggleMobile')
 const router = useRouter()
@@ -115,6 +119,11 @@ const handleLogout = () => {
         </div>
 
         <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <Sun class="w-4 h-4 text-muted-foreground" />
+                <Switch id="toggle-tema" v-model="isDark" variant="violet" />
+                <Moon class="w-4 h-4 text-muted-foreground" />
+            </div>
             <Dropdown>
                 <template #trigger>
                     <button

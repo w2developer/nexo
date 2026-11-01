@@ -276,22 +276,22 @@
             <!-- Card 1: Faltantes -->
             <Card 
                 class="cursor-pointer transition-all hover:shadow-md border-2"
-                :class="abaAtiva === 'faltantes' ? 'border-rose-500 bg-rose-50/20' : 'border-transparent'"
+                :class="abaAtiva === 'faltantes' ? 'border-rose-500 bg-rose-500/10' : 'border-transparent'"
                 @click="abaAtiva = 'faltantes'"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Faltantes (+14 dias)
                         </p>
-                        <p class="text-2xl font-bold text-slate-900 mt-1">
+                        <p class="text-2xl font-bold text-foreground mt-1">
                             {{ listaFaltantes.length }}
                         </p>
-                        <span class="text-xs text-rose-600 font-medium">
+                        <span class="text-xs text-rose-600 dark:text-rose-400 font-medium">
                             Precisam de acompanhamento
                         </span>
                     </div>
-                    <div class="p-3 rounded-xl bg-rose-100 text-rose-600">
+                    <div class="p-3 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
                         <AlertTriangle class="w-6 h-6" />
                     </div>
                 </CardContent>
@@ -300,22 +300,22 @@
             <!-- Card 2: Reta Final -->
             <Card 
                 class="cursor-pointer transition-all hover:shadow-md border-2"
-                :class="abaAtiva === 'prazos' ? 'border-amber-500 bg-amber-50/20' : 'border-transparent'"
+                :class="abaAtiva === 'prazos' ? 'border-amber-500 bg-amber-500/10' : 'border-transparent'"
                 @click="abaAtiva = 'prazos'"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Reta Final (≤ 30 dias)
                         </p>
-                        <p class="text-2xl font-bold text-slate-900 mt-1">
+                        <p class="text-2xl font-bold text-foreground mt-1">
                             {{ listaPrazos.length }}
                         </p>
-                        <span class="text-xs text-amber-600 font-medium">
+                        <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
                             Previsão de término
                         </span>
                     </div>
-                    <div class="p-3 rounded-xl bg-amber-100 text-amber-600">
+                    <div class="p-3 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
                         <Clock class="w-6 h-6" />
                     </div>
                 </CardContent>
@@ -324,22 +324,22 @@
             <!-- Card 3: Certificados -->
             <Card 
                 class="cursor-pointer transition-all hover:shadow-md border-2"
-                :class="abaAtiva === 'certificados' ? 'border-indigo-500 bg-indigo-50/20' : 'border-transparent'"
+                :class="abaAtiva === 'certificados' ? 'border-indigo-500 bg-indigo-500/10' : 'border-transparent'"
                 @click="abaAtiva = 'certificados'"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Certificados Pendentes
                         </p>
-                        <p class="text-2xl font-bold text-slate-900 mt-1">
+                        <p class="text-2xl font-bold text-foreground mt-1">
                             {{ listaCertificados.length }}
                         </p>
-                        <span class="text-xs text-indigo-600 font-medium">
+                        <span class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
                             Aguardando emissão/entrega
                         </span>
                     </div>
-                    <div class="p-3 rounded-xl bg-indigo-100 text-indigo-600">
+                    <div class="p-3 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                         <Award class="w-6 h-6" />
                     </div>
                 </CardContent>
@@ -349,17 +349,17 @@
             <Card class="border-2 border-transparent">
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Matrículas Ativas
                         </p>
-                        <p class="text-2xl font-bold text-slate-900 mt-1">
+                        <p class="text-2xl font-bold text-foreground mt-1">
                             {{ totalCursando }}
                         </p>
-                        <span class="text-xs text-emerald-600 font-medium">
+                        <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                             Alunos cursando atualmente
                         </span>
                     </div>
-                    <div class="p-3 rounded-xl bg-emerald-100 text-emerald-600">
+                    <div class="p-3 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                         <Users class="w-6 h-6" />
                     </div>
                 </CardContent>
@@ -414,7 +414,7 @@
             <CardContent v-else class="p-0 flex-1">
                 <!-- TABELA 1: FALTANTES (+14 DIAS) -->
                 <Table v-if="abaAtiva === 'faltantes'">
-                    <TableHeader class="bg-slate-50/70">
+                    <TableHeader class="bg-muted/50">
                         <TableRow>
                             <TableHead class="pl-4">Aluno / Curso</TableHead>
                             <TableHead class="text-center hidden sm:table-cell">Última Presença</TableHead>
@@ -428,10 +428,10 @@
                                 <div class="flex items-center gap-3">
                                     <Avatar :name="item.aluno?.nome" />
                                     <div class="flex flex-col min-w-0">
-                                        <span class="font-bold text-slate-900 truncate">
+                                        <span class="font-bold text-foreground truncate">
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
-                                        <span class="text-xs text-slate-500 truncate">
+                                        <span class="text-xs text-muted-foreground truncate">
                                             {{ item.curso?.nome }}
                                         </span>
                                     </div>
@@ -440,12 +440,10 @@
 
                             <TableCell class="text-center hidden sm:table-cell">
                                 <div class="flex flex-col items-center">
-                                    <span class="text-sm font-semibold text-rose-600">
-                                        
-                                    </span>
+                                    <span class="text-sm font-semibold text-rose-600 dark:text-rose-400"></span>
                                     
                                     <Tooltip :content="`Há ${item.diasAusente} dias sem vir`" position="top">
-                                        <span class="text-xs text-slate-400 cursor-help">
+                                        <span class="text-xs text-muted-foreground cursor-help">
                                             {{ item.ultimaPresenca ? `${formatarDataBR(item.ultimaPresenca)}` : '---' }}
                                         </span>
                                     </Tooltip>
@@ -473,7 +471,7 @@
                                     <Badge 
                                         v-else 
                                         variant="secondary" 
-                                        class="bg-blue-50 text-blue-700 border-blue-200 text-[10px]"
+                                        class="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 text-[10px]"
                                     >
                                         Contatado
                                     </Badge>
@@ -483,7 +481,7 @@
                                         v-if="item.ultimoContato" 
                                         type="button"
                                         @click="abrirModalContato(item)"
-                                        class="text-[11px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
+                                        class="text-[11px] text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
                                         title="Clique para ver o histórico de observações"
                                     >
                                         <MessageSquare class="w-3 h-3" />
@@ -494,7 +492,6 @@
 
                             <TableCell class="pr-4 py-2 text-end">
                                 <div class="flex items-center justify-end gap-2">
-                                    
                                     <Tooltip :content="item.ultimoContato ? 'Novo Contato' : 'Registrar Contato'" position="top">
                                         <Button 
                                             size="sm" 
@@ -502,16 +499,13 @@
                                             @click="abrirModalContato(item)"
                                         >
                                             <PhoneCall size="14"/>
-                                            <!-- <span class="hidden sm:inline">
-                                                {{ item.ultimoContato ? 'Novo Contato' : 'Registrar Contato' }}
-                                            </span> -->
                                         </Button>
                                     </Tooltip>
 
                                     <Button 
                                         size="sm" 
                                         variant="outline" 
-                                        class="px-2.5 bg-white"
+                                        class="px-2.5 bg-background border-border text-foreground hover:bg-muted"
                                         @click="irParaEditarAluno(item)"
                                         title="Editar dados do aluno"
                                     >
@@ -525,7 +519,7 @@
 
                 <!-- TABELA 2: RETA FINAL (<= 30 DIAS OU VENCIDOS) -->
                 <Table v-else-if="abaAtiva === 'prazos'">
-                    <TableHeader class="bg-slate-50/70">
+                    <TableHeader class="bg-muted/50">
                         <TableRow>
                             <TableHead class="pl-4">Aluno / Curso</TableHead>
                             <TableHead class="text-center hidden sm:table-cell">Data de Término</TableHead>
@@ -539,17 +533,17 @@
                                 <div class="flex items-center gap-3">
                                     <Avatar :name="item.aluno?.nome" />
                                     <div class="flex flex-col min-w-0">
-                                        <span class="font-bold text-slate-900 truncate">
+                                        <span class="font-bold text-foreground truncate">
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
-                                        <span class="text-xs text-slate-500 truncate">
+                                        <span class="text-xs text-muted-foreground truncate">
                                             {{ item.curso?.nome }} • Cód: {{ item.aluno?.codigo }}
                                         </span>
                                     </div>
                                 </div>
                             </TableCell>
 
-                            <TableCell class="text-center hidden sm:table-cell text-sm text-slate-600">
+                            <TableCell class="text-center hidden sm:table-cell text-sm text-muted-foreground">
                                 {{ formatarDataBR(item.data_fim) }}
                             </TableCell>
 
@@ -571,7 +565,7 @@
                                 <Badge 
                                     v-else 
                                     variant="secondary" 
-                                    class="bg-amber-100 text-amber-800 border-amber-200 text-[11px]"
+                                    class="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px]"
                                 >
                                     Faltam {{ item.diasRestantes }} dias
                                 </Badge>
@@ -592,7 +586,7 @@
                                     <Button 
                                         size="sm" 
                                         variant="outline" 
-                                        class="px-2.5 bg-white"
+                                        class="px-2.5 bg-background border-border text-foreground hover:bg-muted"
                                         @click="irParaEditarAluno(item)"
                                         title="Prorrogar prazo ou editar matrícula"
                                     >
@@ -606,7 +600,7 @@
 
                 <!-- TABELA 3: CERTIFICADOS PENDENTES -->
                 <Table v-else-if="abaAtiva === 'certificados'">
-                    <TableHeader class="bg-slate-50/70">
+                    <TableHeader class="bg-muted/50">
                         <TableRow>
                             <TableHead class="pl-4">Aluno / Curso</TableHead>
                             <TableHead class="text-center hidden sm:table-cell">Data de Conclusão</TableHead>
@@ -620,17 +614,17 @@
                                 <div class="flex items-center gap-3">
                                     <Avatar :name="item.aluno?.nome" />
                                     <div class="flex flex-col min-w-0">
-                                        <span class="font-bold text-slate-900 truncate">
+                                        <span class="font-bold text-foreground truncate">
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
-                                        <span class="text-xs text-slate-500 truncate">
+                                        <span class="text-xs text-muted-foreground truncate">
                                             {{ item.curso?.nome }} • Cód: {{ item.aluno?.codigo }}
                                         </span>
                                     </div>
                                 </div>
                             </TableCell>
 
-                            <TableCell class="text-center hidden sm:table-cell text-sm text-slate-600">
+                            <TableCell class="text-center hidden sm:table-cell text-sm text-muted-foreground">
                                 {{ formatarDataBR(item.data_conclusao) }}
                             </TableCell>
 
@@ -645,14 +639,14 @@
                                 <Badge 
                                     v-else-if="item.situacao_certificado === 'pendente'" 
                                     variant="secondary" 
-                                    class="bg-amber-100 text-amber-800 text-[10px] uppercase"
+                                    class="bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] uppercase"
                                 >
                                     Pendente
                                 </Badge>
                                 <Badge 
                                     v-else 
                                     variant="secondary" 
-                                    class="bg-blue-100 text-blue-800 text-[10px] uppercase"
+                                    class="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] uppercase"
                                 >
                                     Emitido (Aguardando Entrega)
                                 </Badge>
@@ -662,22 +656,22 @@
                                 <div class="flex justify-end">
                                     <Dropdown align="right">
                                         <template #trigger>
-                                            <Button size="sm" variant="outline" class="bg-white text-xs">
+                                            <Button size="sm" variant="outline" class="bg-background border-border text-foreground hover:bg-muted text-xs">
                                                 Alterar Status
                                                 <ChevronDown class="w-3.5 h-3.5 ml-1.5" />
                                             </Button>
                                         </template>
                                         <template #content>
-                                            <button @click="atualizarCertificado(item.id, 'nao_solicitado')" class="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-600 text-xs font-medium">
+                                            <button @click="atualizarCertificado(item.id, 'nao_solicitado')" class="w-full text-left px-4 py-2 hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium cursor-pointer">
                                                 Não Solicitado
                                             </button>
-                                            <button @click="atualizarCertificado(item.id, 'pendente')" class="w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-600 text-xs font-medium">
+                                            <button @click="atualizarCertificado(item.id, 'pendente')" class="w-full text-left px-4 py-2 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium cursor-pointer">
                                                 Pendente
                                             </button>
-                                            <button @click="atualizarCertificado(item.id, 'emitido')" class="w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-600 text-xs font-medium">
+                                            <button @click="atualizarCertificado(item.id, 'emitido')" class="w-full text-left px-4 py-2 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium cursor-pointer">
                                                 Emitido
                                             </button>
-                                            <button @click="atualizarCertificado(item.id, 'entregue')" class="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 text-xs font-medium border-t border-slate-100">
+                                            <button @click="atualizarCertificado(item.id, 'entregue')" class="w-full text-left px-4 py-2 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium border-t border-border cursor-pointer">
                                                 Marcar como Entregue (Concluir fila)
                                             </button>
                                         </template>
@@ -698,14 +692,15 @@
         >
             <div v-if="itemContatoSelecionado" class="space-y-4">
                 <!-- Resumo do Aluno -->
-                <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border">
                     <Avatar :name="itemContatoSelecionado.aluno?.nome" />
                     <div class="min-w-0 flex-1">
-                        <p class="font-bold text-sm text-slate-900 truncate">
+                        <p class="font-bold text-sm text-foreground truncate">
                             {{ formatarNome(itemContatoSelecionado.aluno?.nome) }}
                         </p>
-                        <p class="text-xs text-slate-500 truncate">
-                            {{ itemContatoSelecionado.curso?.nome }} • <span class="text-rose-600 font-medium">{{ itemContatoSelecionado.diasAusente }} dias sem presença</span>
+                        <p class="text-xs text-muted-foreground truncate">
+                            {{ itemContatoSelecionado.curso?.nome }} • 
+                            <span class="text-rose-600 dark:text-rose-400 font-medium">{{ itemContatoSelecionado.diasAusente }} dias sem presença</span>
                         </p>
                     </div>
                 </div>
@@ -717,13 +712,13 @@
                         v-model="observacaoContato" 
                         rows="3"
                         placeholder="Descreva o motivo da ausência ou resultado da ligação..."
-                        class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                        class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                     ></textarea>
                 </FormGroup>
 
                 <!-- Histórico de Contatos Anteriores -->
                 <div v-if="itemContatoSelecionado.historicoContatos?.length > 0" class="space-y-2 pt-2 border-t border-border">
-                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                         <MessageSquare class="w-3.5 h-3.5" />
                         Histórico de Contatos ({{ itemContatoSelecionado.historicoContatos.length }})
                     </h4>
@@ -732,13 +727,13 @@
                         <div 
                             v-for="reg in itemContatoSelecionado.historicoContatos" 
                             :key="reg.id"
-                            class="p-3 rounded-md bg-slate-50 border border-slate-200 text-xs space-y-1"
+                            class="p-3 rounded-md bg-muted border border-border text-xs space-y-1"
                         >
-                            <div class="flex items-center justify-between text-slate-500 font-semibold border-b border-slate-200/70 pb-1">
+                            <div class="flex items-center justify-between text-muted-foreground font-semibold border-b border-border pb-1">
                                 <span>Contato realizado</span>
                                 <span>{{ formatarDataBR(reg.data_contato) }}</span>
                             </div>
-                            <p class="text-slate-700 whitespace-pre-wrap break-words leading-relaxed pt-0.5">
+                            <p class="text-foreground whitespace-pre-wrap break-words leading-relaxed pt-0.5">
                                 {{ reg.observacao || 'Sem observações registradas.' }}
                             </p>
                         </div>

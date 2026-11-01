@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Habilita o variante dark: baseado na classe .dark no HTML */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -23,35 +26,55 @@
     --border: #e4e4e7;
     --ring: #18181b;
     --radius: 0.5rem;
+    color-scheme: light;
+}
+
+/* Tema Escuro (Paleta GitHub Dark Default) */
+.dark {
+    --background: #0d1117;          /* canvas-default */
+    --foreground: #e6edf3;          /* fg-default */
+    --primary: #2f81f7;             /* accent-fg (Azul GitHub legível no escuro) */
+    --primary-foreground: #ffffff;  /* texto sobre botão primário */
+    --muted: #161b22;               /* canvas-subtle (cards, inputs, hover) */
+    --muted-foreground: #8b949e;    /* fg-muted (textos secundários) */
+    --border: #30363d;              /* border-default */
+    --ring: #58a6ff;                /* foco de acessibilidade */
+    color-scheme: dark;
 }
 
 /* ==========================================
-   Estilização Global do Scrollbar (Discreto)
+   Estilização Base e Scrollbar (Discreto)
    ========================================== */
 
+body {
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 * {
-    /* Suporte para Firefox */
+    /* Suporte para Firefox (corrigido de '-' para '*') */
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
 }
 
 /* Suporte para Chrome, Edge e Safari */
 *::-webkit-scrollbar {
-    width: 6px;  /* Espessura do scroll vertical */
-    height: 6px; /* Espessura do scroll horizontal */
+    width: 6px;
+    height: 6px;
 }
 
 *::-webkit-scrollbar-track {
-    background: transparent; /* Fundo transparente para manter a discrição */
+    background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-    background-color: var(--border); /* Usa a cor de borda do seu tema (cinza bem claro) */
-    border-radius: var(--radius);    /* Deixa as pontas arredondadas */
+    background-color: var(--border);
+    border-radius: var(--radius);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-    background-color: var(--muted-foreground); /* Escurece suavemente ao passar o mouse */
+    background-color: var(--muted-foreground);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -59,7 +82,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 html {
-  scroll-behavior: smooth;
+    scroll-behavior: smooth;
 }
 
 button {

@@ -2,16 +2,15 @@
     import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
     import { useRouter } from 'vue-router';
-    import { Menu, UserPen, ClipboardClock, SquareCheck } from '@lucide/vue';
+    import { Menu, UserPen, ClipboardClock, SquareCheck, Trash2 } from '@lucide/vue';
 
     const router = useRouter();
 
     const irParaDashboard = () => {
-        router.push('/professor/dashboard')
-    }
+        router.push('/professor/dashboard');
+    };
 
     const irParaEditarAluno = (item) => {
-        // router.push(`/professor/editar-aluno/${item.aluno_id}`);
         router.push(`/professor/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
     };
 
@@ -27,7 +26,7 @@
         calcularTempoRestante, 
         getUltimaPresenca 
     } from '@/utils/dateHelpers';
-    import { formatarNome, getInitials, getAvatarColor } from '@/utils/formatters';
+    import { formatarNome } from '@/utils/formatters';
     import { toast } from '@/composables/useToast';
 
     import Avatar from '@/components/ui/Avatar.vue';
@@ -47,8 +46,8 @@
     import TableRow from '@/components/ui/TableRow.vue';
     import Tooltip from '@/components/ui/Tooltip.vue';
 
-    import ModalEditarAluno from '../components/ModalEditarAluno.vue';
     import ModalConcluirAluno from '../components/ModalConcluirAluno.vue';
+    import ModalExcluirAluno from '@/modules/shared/components/ModalExcluirAluno.vue';
 
     // Estados da listagem
     const alunos = ref([]);
@@ -67,10 +66,22 @@
     // Controle dos modais
     const modalConcluirAberto = ref(false);
     const matriculaSelecionada = ref(null);
+    const modalExclusaoAberto = ref(false);
+    const alunoParaExcluir = ref(null);
 
     const abrirModalConcluir = (item) => {
         matriculaSelecionada.value = item;
         modalConcluirAberto.value = true;
+    };
+
+    const abrirModalExclusao = (item) => {
+        if (!item.aluno) return;
+        alunoParaExcluir.value = item.aluno;
+        modalExclusaoAberto.value = true;
+    };
+
+    const aoExcluirAluno = (alunoIdExcluido) => {
+        alunos.value = alunos.value.filter(item => item.aluno_id !== alunoIdExcluido);
     };
 
     // Marca ou desmarca presença com atualização otimista
@@ -196,6 +207,9 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
                 buscarAlunos(true);
             })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'aluno' }, () => {
+                buscarAlunos(true);
+            })
             .subscribe();
     });
 
@@ -207,7 +221,7 @@
 <template>
     <div class="space-y-6">
         <Card>
-            <CardHeader class="p-4 font-bold text-xl border-b border-border">
+            <CardHeader class="p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Filtros e Pesquisa</h2>
             </CardHeader>
             <CardContent class="p-4">
@@ -229,7 +243,7 @@
         </Card>
 
         <Card class="min-h-[100dvh] flex flex-col">
-            <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border">
+            <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Marcar Presença</h2>
                 <Button variant="outline" @click="irParaDashboard">Dashboard</Button>
             </CardHeader>
@@ -238,7 +252,7 @@
                 Carregando dados...
             </div>
 
-            <div v-else-if="erroAlunos" class="p-8 text-center text-red-500">
+            <div v-else-if="erroAlunos" class="p-8 text-center text-red-500 dark:text-red-400">
                 Erro ao buscar dados: {{ erroAlunos }}
             </div>
 
@@ -260,16 +274,16 @@
                                     v-for="item in alunosListagem" 
                                     :key="item.id" 
                                     class="align-middle transition-opacity duration-300"
-                                    :class="{'opacity-60 bg-slate-50': presencasConfirmadas.includes(item.id)}"
+                                    :class="{'opacity-60 bg-muted/60': presencasConfirmadas.includes(item.id)}"
                                 >
                                     <TableCell class="pl-4 py-3">
                                         <div class="flex items-center gap-3">
                                             <Avatar :name="item.aluno?.nome" />
                                             <div class="flex flex-col">
-                                                <span class="font-medium text-slate-900">
+                                                <span class="font-medium text-foreground">
                                                     {{ formatarNome(item.aluno?.nome) }}
                                                 </span>
-                                                <span class="text-xs text-slate-500 truncate max-w-[200px] md:max-w-[300px]">
+                                                <span class="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[300px]">
                                                     {{ item.curso?.nome || 'Curso não informado' }}
                                                 </span>
                                             </div>
@@ -278,10 +292,10 @@
 
                                     <TableCell 
                                         class="text-center hidden min-[550px]:table-cell font-medium transition-colors"
-                                        :class="isDataVencida(item.data_fim) ? 'text-red-500' : 'text-muted-foreground'"
+                                        :class="isDataVencida(item.data_fim) ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'"
                                     >
                                         <Tooltip :content="calcularTempoRestante(item.data_fim)" position="top">
-                                            <span class="cursor-help underline decoration-dashed underline-offset-4 decoration-slate-300">
+                                            <span class="cursor-help underline decoration-dashed underline-offset-4 decoration-border">
                                                 {{ textoPrevisaoTermino(item.data_fim) }}
                                             </span>
                                         </Tooltip>
@@ -289,7 +303,7 @@
 
                                     <TableCell 
                                         class="text-center hidden min-[550px]:table-cell font-medium transition-colors"
-                                        :class="isDuasSemanasAtras(getUltimaPresenca(item.registro_presenca)) ? 'text-red-500' : 'text-muted-foreground'"
+                                        :class="isDuasSemanasAtras(getUltimaPresenca(item.registro_presenca)) ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'"
                                     >
                                         <span v-if="item.ead !== true">
                                             {{ formatarDataBR(getUltimaPresenca(item.registro_presenca)) }}
@@ -313,7 +327,7 @@
                                                     <Button 
                                                         size="sm"
                                                         variant="outline" 
-                                                        class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-2 rounded-md transition-colors shadow-sm"
+                                                        class="bg-background border border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm"
                                                     >
                                                         <Menu class="w-4 h-4" />
                                                     </Button>
@@ -321,24 +335,32 @@
                                                 <template #content>
                                                     <button
                                                         @click="irParaEditarAluno(item)"
-                                                        class="w-full flex text-left px-4 py-2 gap-2 hover:bg-muted rounded transition-colors text-sm cursor-pointer"
+                                                        class="w-full flex items-center text-left px-4 py-2 gap-2 text-foreground hover:bg-muted rounded transition-colors text-sm cursor-pointer"
                                                     >
-                                                        <UserPen size="18"/>
+                                                        <UserPen class="w-4 h-4" />
                                                         Editar Aluno
                                                     </button>
                                                     <button
                                                         @click="$router.push(`/professor/horarios/${item.id}`)"
-                                                        class="w-full flex text-left px-4 py-2 gap-2 hover:bg-muted rounded transition-colors text-sm cursor-pointer"
+                                                        class="w-full flex items-center text-left px-4 py-2 gap-2 text-foreground hover:bg-muted rounded transition-colors text-sm cursor-pointer"
                                                     >
-                                                        <ClipboardClock size="18"/>
+                                                        <ClipboardClock class="w-4 h-4" />
                                                         Gerenciar Horários
                                                     </button>
                                                     <button 
                                                         @click="abrirModalConcluir(item)" 
-                                                        class="w-full flex text-left px-4 py-2 gap-2 cursor-pointer hover:bg-emerald-50 text-emerald-600 rounded transition-colors text-sm font-medium"
+                                                        class="w-full flex items-center text-left px-4 py-2 gap-2 cursor-pointer hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded transition-colors text-sm font-medium"
                                                     >
-                                                        <SquareCheck size="18"/>
+                                                        <SquareCheck class="w-4 h-4" />
                                                         Concluir Aluno
+                                                    </button>
+                                                    <hr class="my-1 border-border" />
+                                                    <button 
+                                                        @click="abrirModalExclusao(item)" 
+                                                        class="w-full flex items-center text-left px-4 py-2 gap-2 cursor-pointer hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded transition-colors text-sm font-medium"
+                                                    >
+                                                        <Trash2 class="w-4 h-4" />
+                                                        Excluir Aluno
                                                     </button>
                                                 </template>
                                             </Dropdown>
@@ -361,11 +383,16 @@
         <br>
 
         <!-- Modais Extraídos -->
-
         <ModalConcluirAluno 
             v-model="modalConcluirAberto" 
             :matricula="matriculaSelecionada" 
             @concluido="buscarAlunos(true)" 
+        />
+
+        <ModalExcluirAluno
+            v-model="modalExclusaoAberto"
+            :aluno="alunoParaExcluir"
+            @excluido="aoExcluirAluno"
         />
     </div>
 </template>
