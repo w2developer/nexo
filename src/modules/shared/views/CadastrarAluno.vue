@@ -110,14 +110,14 @@
                     <Avatar :name="form.nome || 'Novo Aluno'" class="shrink-0" />
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
-                            <h2 class="font-bold text-base sm:text-lg text-slate-900 leading-tight truncate">
+                            <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                 {{ form.nome.trim() ? formatarNome(form.nome) : 'Novo Aluno' }}
                             </h2>
                             <Badge :variant="form.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
                                 {{ form.ativo ? 'Ativo' : 'Inativo' }}
                             </Badge>
                         </div>
-                        <p class="text-xs text-slate-500 truncate">
+                        <p class="text-xs text-muted-foreground truncate">
                             Código: {{ form.codigo.trim() || 'Não definido' }}
                         </p>
                     </div>
@@ -151,7 +151,7 @@
         <!-- Dados Cadastrais -->
         <Card>
             <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                <h3 class="font-bold text-base text-slate-900">Dados Cadastrais</h3>
+                <h3 class="font-bold text-base text-foreground">Dados Cadastrais</h3>
             </CardHeader>
 
             <CardContent class="p-4">
@@ -178,11 +178,11 @@
                                     type="button"
                                     variant="outline" 
                                     size="sm" 
-                                    class="h-10 px-2.5 shrink-0 bg-white"
+                                    class="h-10 px-2.5 shrink-0 bg-background"
                                     title="Gerar código automático"
                                     @click="gerarCodigoAleatorio"
                                 >
-                                    <Sparkles class="w-4 h-4 text-indigo-600" />
+                                    <Sparkles class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                                 </Button> -->
                             </div>
                         </FormGroup>
@@ -190,7 +190,7 @@
 
                     <div class="sm:col-span-3">
                         <FormGroup label="Status do Cadastro" id="cad-status">
-                            <div class="flex items-center gap-3 h-10 px-3 rounded-md border border-slate-200 bg-slate-50/50">
+                            <div class="flex items-center gap-3 h-10 px-3 rounded-md border border-border bg-muted/50">
                                 <Switch 
                                     id="switch-cad-ativo"
                                     variant="emerald"
@@ -198,8 +198,8 @@
                                 />
                                 <label 
                                     for="switch-cad-ativo" 
-                                    class="text-sm font-medium cursor-pointer select-none"
-                                    :class="form.ativo ? 'text-emerald-700' : 'text-slate-500'"
+                                    class="text-sm font-medium cursor-pointer select-none transition-colors"
+                                    :class="form.ativo ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'"
                                 >
                                     {{ form.ativo ? 'Aluno Ativo' : 'Aluno Inativo' }}
                                 </label>
@@ -214,14 +214,14 @@
         <Card>
             <CardContent class="p-4 flex items-center justify-between gap-4">
                 <div class="flex items-start sm:items-center gap-3">
-                    <div class="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
+                    <div class="p-2 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shrink-0">
                         <BookOpen class="w-5 h-5" />
                     </div>
                     <div>
-                        <label for="switch-ir-matricula" class="text-sm font-bold text-slate-900 cursor-pointer select-none">
+                        <label for="switch-ir-matricula" class="text-sm font-bold text-foreground cursor-pointer select-none">
                             Vincular matrícula em seguida (Opcional)
                         </label>
-                        <p class="text-xs text-slate-500">
+                        <p class="text-xs text-muted-foreground">
                             Se ativado, você será levado direto para a tela de Nova Matrícula após salvar o aluno.
                         </p>
                     </div>

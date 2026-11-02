@@ -147,7 +147,7 @@
         <Card>
             <CardContent class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0">
+                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0 bg-background text-foreground border-border hover:bg-muted">
                         <ArrowLeft class="w-4 h-4" />
                     </Button>
 
@@ -155,14 +155,14 @@
                         <Avatar :name="aluno.nome" class="shrink-0" />
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <h2 class="font-bold text-base sm:text-lg text-slate-900 leading-tight truncate">
+                                <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                     {{ formatarNome(aluno.nome) }}
                                 </h2>
                                 <Badge :variant="aluno.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
                                     {{ aluno.ativo ? 'Ativo' : 'Inativo' }}
                                 </Badge>
                             </div>
-                            <p class="text-xs text-slate-500 truncate">
+                            <p class="text-xs text-muted-foreground truncate">
                                 Nova Matrícula • Código: {{ aluno.codigo }}
                             </p>
                         </div>
@@ -197,21 +197,21 @@
             <!-- Cursos já vinculados -->
             <Card v-if="aluno.matricula && aluno.matricula.length > 0">
                 <CardContent class="p-4 flex flex-wrap items-center gap-2">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mr-2">
-                        <CheckCircle2 class="w-4 h-4 text-slate-400" />
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mr-2">
+                        <CheckCircle2 class="w-4 h-4 text-muted-foreground" />
                         Cursos já vinculados:
                     </span>
 
                     <div 
                         v-for="mat in aluno.matricula" 
                         :key="mat.id"
-                        class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md text-xs"
+                        class="flex items-center gap-1.5 bg-muted/50 border border-border px-2.5 py-1 rounded-md text-xs"
                     >
-                        <span class="font-medium text-slate-700">{{ mat.curso?.nome }}</span>
+                        <span class="font-medium text-foreground">{{ mat.curso?.nome }}</span>
                         <Badge 
                             :variant="getBadgeVariantMatricula(mat.situacao)"
-                            class="text-[9px] px-1.5 py-0"
-                            :class="mat.situacao === 'cursando' ? 'bg-amber-100 text-amber-700 border-amber-200' : ''"
+                            class="text-[9px] px-1.5 py-0 transition-colors"
+                            :class="mat.situacao === 'cursando' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : ''"
                         >
                             {{ capitalizar(mat.situacao) }}
                         </Badge>
@@ -222,11 +222,11 @@
             <!-- Formulário 2x2 -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                    <h3 class="font-bold text-base text-slate-900">Dados da Nova Matrícula</h3>
+                    <h3 class="font-bold text-base text-foreground">Dados da Nova Matrícula</h3>
                 </CardHeader>
 
                 <CardContent class="p-4">
-                    <div v-if="cursosDisponiveis.length === 0" class="p-6 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                    <div v-if="cursosDisponiveis.length === 0" class="p-6 text-center text-muted-foreground bg-muted/30 rounded-lg border border-dashed border-border">
                         Este aluno já possui matrícula registrada em todos os cursos cadastrados no sistema.
                     </div>
 
@@ -240,10 +240,10 @@
                         </FormGroup>
 
                         <FormGroup label="Modalidade de Ensino" id="novo-ead">
-                            <div class="flex items-center justify-between h-10 px-3 rounded-md border border-slate-200 bg-slate-50/50">
+                            <div class="flex items-center justify-between h-10 px-3 rounded-md border border-border bg-muted/50">
                                 <span 
-                                    class="text-sm cursor-pointer select-none"
-                                    :class="!form.ead ? 'font-semibold text-slate-900' : 'text-slate-500'"
+                                    class="text-sm cursor-pointer select-none transition-colors"
+                                    :class="!form.ead ? 'font-semibold text-foreground' : 'text-muted-foreground'"
                                     @click="form.ead = false"
                                 >
                                     Presencial
@@ -255,8 +255,8 @@
                                 />
 
                                 <span 
-                                    class="text-sm cursor-pointer select-none"
-                                    :class="form.ead ? 'font-semibold text-indigo-600' : 'text-slate-500'"
+                                    class="text-sm cursor-pointer select-none transition-colors"
+                                    :class="form.ead ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'"
                                     @click="form.ead = true"
                                 >
                                     EAD

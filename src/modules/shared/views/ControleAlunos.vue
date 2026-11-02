@@ -135,7 +135,7 @@
     <div class="space-y-6">
         <!-- Busca -->
         <Card>
-            <CardHeader class="p-4 font-bold text-xl border-b border-border">
+            <CardHeader class="p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Controle Geral de Alunos</h2>
             </CardHeader>
             <CardContent class="p-4">
@@ -162,7 +162,7 @@
 
             <div v-else class="flex flex-col">
                 <!-- Cabeçalho Desktop -->
-                <div class="hidden md:flex items-center gap-4 p-4 border-b border-border bg-slate-50/50 text-sm font-semibold text-slate-600">
+                <div class="hidden md:flex items-center gap-4 p-4 border-b border-border bg-muted/50 text-sm font-semibold text-muted-foreground">
                     <div class="w-6"></div>
                     <div class="flex-1">Identificação do Aluno</div>
                     <div class="w-32 text-center">Código</div>
@@ -175,30 +175,30 @@
                     v-for="aluno in alunosFiltrados" 
                     :key="aluno.id" 
                     class="border-b border-border last:border-0 flex flex-col transition-colors"
-                    :class="{'bg-slate-50/50': linhaExpandida === aluno.id}"
+                    :class="{'bg-muted/40': linhaExpandida === aluno.id}"
                 >
                     <!-- Linha Principal -->
                     <div 
-                        class="flex items-center justify-between gap-2 p-3 md:p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        class="flex items-center justify-between gap-2 p-3 md:p-4 cursor-pointer hover:bg-muted/60 transition-colors"
                         @click="toggleLinha(aluno.id)"
                     >
                         <div class="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
                             <div 
-                                class="text-slate-400 transition-transform duration-300 ease-in-out shrink-0" 
-                                :class="{'rotate-90 text-indigo-500': linhaExpandida === aluno.id}"
+                                class="text-muted-foreground transition-transform duration-300 ease-in-out shrink-0" 
+                                :class="{'rotate-90 text-indigo-600 dark:text-indigo-400': linhaExpandida === aluno.id}"
                             >
                                 <ChevronRight class="w-5 h-5" />
                             </div>
 
                             <Avatar :name="aluno.nome" class="w-9 h-9 md:w-10 md:h-10" />
 
-                            <span class="font-bold text-slate-900 leading-tight truncate">
+                            <span class="font-bold text-foreground leading-tight truncate">
                                 {{ formatarNome(aluno.nome) }}
                             </span>
                         </div>
 
                         <div class="flex items-center gap-4 shrink-0">
-                            <div class="hidden md:block w-32 text-center text-sm font-mono text-slate-600">
+                            <div class="hidden md:block w-32 text-center text-sm font-mono text-muted-foreground">
                                 {{ aluno.codigo }}
                             </div>
 
@@ -215,32 +215,32 @@
                                         <Button 
                                             size="sm"
                                             variant="outline" 
-                                            class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-2 rounded-md transition-colors shadow-sm"
+                                            class="bg-background border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm"
                                         >
                                             <Menu class="w-4 h-4" />
                                         </Button>
                                     </template>
                                     <template #content>
-                                        <button @click="abrirModalEdicaoAluno(aluno)" class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors cursor-pointer">
+                                        <button @click="abrirModalEdicaoAluno(aluno)" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer">
                                             <UserPen size="18"/>
                                             Editar Aluno
                                         </button>
                                         <button
                                             @click="irParaNovaMatricula(aluno)"
-                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors cursor-pointer"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                                         >
                                             <BookOpen class="w-4 h-4" /> Nova Matrícula
                                         </button>
                                         <hr class="my-1 border-border" />
-                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer">
+                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer">
                                             <UserX class="w-4 h-4" /> Desativar Aluno
                                         </button>
-                                        <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer">
+                                        <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer">
                                             <UserCheck class="w-4 h-4" /> Reativar Aluno
                                         </button>
                                         <button
                                             @click="abrirModalExclusao(aluno)"
-                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                                         >
                                             <Trash2 class="w-4 h-4" /> Excluir Aluno
                                         </button>

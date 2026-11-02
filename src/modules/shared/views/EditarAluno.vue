@@ -304,7 +304,7 @@
         <Card>
             <CardContent class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0">
+                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0 bg-background text-foreground border-border hover:bg-muted">
                         <ArrowLeft class="w-4 h-4" />
                     </Button>
 
@@ -312,14 +312,14 @@
                         <Avatar :name="formAluno.nome" class="shrink-0" />
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <h2 class="font-bold text-base sm:text-lg text-slate-900 leading-tight truncate">
+                                <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                     {{ formatarNome(formAluno.nome) || 'Aluno sem nome' }}
                                 </h2>
                                 <Badge :variant="formAluno.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
                                     {{ formAluno.ativo ? 'Ativo' : 'Inativo' }}
                                 </Badge>
                             </div>
-                            <p class="text-xs text-slate-500 truncate">
+                            <p class="text-xs text-muted-foreground truncate">
                                 Código: {{ formAluno.codigo || '---' }}
                             </p>
                         </div>
@@ -347,7 +347,7 @@
             <!-- Seção 1: Dados Cadastrais -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                    <h3 class="font-bold text-base text-slate-900">Dados Cadastrais</h3>
+                    <h3 class="font-bold text-base text-foreground">Dados Cadastrais</h3>
                 </CardHeader>
                 <CardContent class="p-4">
                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
@@ -365,7 +365,7 @@
 
                         <div class="sm:col-span-3">
                             <FormGroup label="Status do Cadastro" id="aluno-status">
-                                <div class="flex items-center gap-3 h-10 px-3 rounded-md border border-slate-200 bg-slate-50/50">
+                                <div class="flex items-center gap-3 h-10 px-3 rounded-md border border-border bg-muted/50">
                                     <Switch 
                                         id="switch-ativo"
                                         variant="emerald"
@@ -373,8 +373,8 @@
                                     />
                                     <label 
                                         for="switch-ativo" 
-                                        class="text-sm font-medium cursor-pointer select-none"
-                                        :class="formAluno.ativo ? 'text-emerald-700' : 'text-slate-500'"
+                                        class="text-sm font-medium cursor-pointer select-none transition-colors"
+                                        :class="formAluno.ativo ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'"
                                     >
                                         {{ formAluno.ativo ? 'Aluno Ativo' : 'Aluno Inativo' }}
                                     </label>
@@ -389,12 +389,12 @@
             <Card class="overflow-hidden">
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <BookOpen class="w-5 h-5 text-slate-500" />
-                        <h3 class="font-bold text-base text-slate-900">
+                        <BookOpen class="w-5 h-5 text-muted-foreground" />
+                        <h3 class="font-bold text-base text-foreground">
                             Matrículas Vinculadas ({{ matriculas.length }})
                         </h3>
                     </div>
-                    <span class="text-xs text-slate-500 hidden sm:inline">
+                    <span class="text-xs text-muted-foreground hidden sm:inline">
                         Clique em um curso para expandir e editar
                     </span>
                 </CardHeader>
@@ -408,24 +408,24 @@
                         v-for="mat in matriculas" 
                         :key="mat.id"
                         class="border-b border-border last:border-0 flex flex-col transition-colors"
-                        :class="{'bg-slate-50/40': matriculaExpandida === mat.id}"
+                        :class="{'bg-muted/40': matriculaExpandida === mat.id}"
                     >
                         <!-- Cabeçalho Retrátil da Matrícula -->
                         <div 
-                            class="flex items-center justify-between gap-3 p-3.5 md:p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                            class="flex items-center justify-between gap-3 p-3.5 md:p-4 cursor-pointer hover:bg-muted/60 transition-colors"
                             @click="toggleMatricula(mat.id)"
                         >
                             <!-- Esquerda: Seta + Nome do Curso + Situação -->
                             <div class="flex items-center gap-3 min-w-0 flex-1">
                                 <div 
-                                    class="text-slate-400 transition-transform duration-300 ease-in-out shrink-0"
-                                    :class="{'rotate-90 text-indigo-600': matriculaExpandida === mat.id}"
+                                    class="text-muted-foreground transition-transform duration-300 ease-in-out shrink-0"
+                                    :class="{'rotate-90 text-indigo-600 dark:text-indigo-400': matriculaExpandida === mat.id}"
                                 >
                                     <ChevronRight class="w-5 h-5" />
                                 </div>
 
                                 <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0">
-                                    <span class="font-bold text-slate-900 text-sm sm:text-base truncate">
+                                    <span class="font-bold text-foreground text-sm sm:text-base truncate">
                                         {{ getNomeCurso(mat.curso_id) }}
                                     </span>
 
@@ -433,12 +433,12 @@
                                         <Badge 
                                             :variant="getBadgeVariantMatricula(mat.situacao)"
                                             class="text-[10px] px-2 py-0"
-                                            :class="mat.situacao === 'cursando' ? 'bg-amber-100 text-amber-700 border-amber-200' : ''"
+                                            :class="mat.situacao === 'cursando' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : ''"
                                         >
                                             {{ capitalizar(mat.situacao) }}
                                         </Badge>
 
-                                        <span class="text-xs text-slate-400 hidden md:inline">
+                                        <span class="text-xs text-muted-foreground hidden md:inline">
                                             • Início: {{ formatarDataBR(mat.data_inicio) }}
                                         </span>
                                     </div>
@@ -458,7 +458,7 @@
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    class="bg-white h-8 px-2.5 text-xs"
+                                    class="bg-background text-foreground hover:bg-muted border-border h-8 px-2.5 text-xs"
                                     @click="router.push(`/${tipoUsuario}/presencas/${mat.id}`)"
                                 >
                                     <History class="w-3.5 h-3.5 sm:mr-1.5" />
@@ -468,7 +468,7 @@
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    class="bg-white h-8 px-2.5 text-xs"
+                                    class="bg-background text-foreground hover:bg-muted border-border h-8 px-2.5 text-xs"
                                     @click="router.push(`/${tipoUsuario}/horarios/${mat.id}`)"
                                 >
                                     <Calendar class="w-3.5 h-3.5 sm:mr-1.5" />
@@ -483,8 +483,8 @@
                             :class="matriculaExpandida === mat.id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
                         >
                             <div class="overflow-hidden">
-                                <div class="p-4 pt-2 pl-4 md:pl-12 bg-slate-50/50 border-t border-slate-100">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                <div class="p-4 pt-2 pl-4 md:pl-12 bg-muted/30 border-t border-border">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-background p-4 rounded-lg border border-border shadow-sm">
                                         <FormGroup label="Curso" :id="`curso-${mat.id}`">
                                             <Select 
                                                 v-model="mat.curso_id" 
@@ -502,10 +502,10 @@
                                         </FormGroup>
 
                                         <FormGroup label="Modalidade de Ensino" :id="`ead-${mat.id}`">
-                                            <div class="flex items-center justify-between h-10 px-3 rounded-md border border-slate-200 bg-slate-50/50">
+                                            <div class="flex items-center justify-between h-10 px-3 rounded-md border border-border bg-muted/50">
                                                 <span 
-                                                    class="text-sm cursor-pointer select-none"
-                                                    :class="!mat.ead ? 'font-semibold text-slate-900' : 'text-slate-500'"
+                                                    class="text-sm cursor-pointer select-none transition-colors"
+                                                    :class="!mat.ead ? 'font-semibold text-foreground' : 'text-muted-foreground'"
                                                     @click="mat.ead = false"
                                                 >
                                                     Presencial
@@ -517,8 +517,8 @@
                                                 />
 
                                                 <span 
-                                                    class="text-sm cursor-pointer select-none"
-                                                    :class="mat.ead ? 'font-semibold text-indigo-600' : 'text-slate-500'"
+                                                    class="text-sm cursor-pointer select-none transition-colors"
+                                                    :class="mat.ead ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'"
                                                     @click="mat.ead = true"
                                                 >
                                                     EAD
@@ -544,6 +544,8 @@
                     </div>
                 </div>
             </Card>
+            <br>
+            <br>
         </template>
     </div>
 </template>

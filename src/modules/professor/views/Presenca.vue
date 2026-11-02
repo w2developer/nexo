@@ -221,7 +221,7 @@
 <template>
     <div class="space-y-6">
         <Card>
-            <CardHeader class="p-4 font-bold text-xl border-b border-border text-foreground">
+            <CardHeader class="p-4 font-bold text-xl border-b border-border text-   ">
                 <h2>Filtros e Pesquisa</h2>
             </CardHeader>
             <CardContent class="p-4">

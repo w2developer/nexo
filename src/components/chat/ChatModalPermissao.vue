@@ -18,8 +18,8 @@
         description="Receba alertas de novas mensagens mesmo quando estiver em outra aba ou programa."
         size="sm"
     >
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-violet-50 border border-violet-100 text-violet-800 text-sm">
-            <Bell class="w-5 h-5 shrink-0 text-violet-600" />
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-700 dark:text-violet-300 text-sm">
+            <Bell class="w-5 h-5 shrink-0 text-violet-600 dark:text-violet-400" />
             <span>Não perca avisos importantes da secretaria, professores ou suporte.</span>
         </div>
 

@@ -138,7 +138,7 @@
     <div class="space-y-6">
         <!-- Busca -->
         <Card>
-            <CardHeader class="p-4 font-bold text-xl border-b border-border">
+            <CardHeader class="p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Controle de Concluídos</h2>
             </CardHeader>
             <CardContent class="p-4">
@@ -165,7 +165,7 @@
 
             <div v-else class="flex flex-col">
                 <!-- Cabeçalho Desktop -->
-                <div class="hidden md:flex items-center gap-4 p-4 border-b border-border bg-slate-50/50 text-sm font-semibold text-slate-600">
+                <div class="hidden md:flex items-center gap-4 p-4 border-b border-border bg-muted/50 text-sm font-semibold text-muted-foreground">
                     <div class="flex-1">Identificação do Aluno</div>
                     <div class="w-48">Curso</div>
                     <div class="w-32 text-center">Conclusão</div>
@@ -182,18 +182,18 @@
                     <div 
                         v-for="mat in aluno.matricula" 
                         :key="mat.id"
-                        class="flex items-center justify-between gap-2 p-3 md:p-4 hover:bg-slate-50 transition-colors"
+                        class="flex items-center justify-between gap-2 p-3 md:p-4 hover:bg-muted/50 transition-colors"
                     >
                         <!-- Identificação (Esquerda) -->
                         <div class="flex items-center gap-2.5 md:gap-3 flex-1 min-w-0">
                             <Avatar :name="aluno.nome" class="w-9 h-9 md:w-10 md:h-10" />
 
                             <div class="flex flex-col min-w-0">
-                                <span class="font-bold text-slate-900 leading-tight truncate">
+                                <span class="font-bold text-foreground leading-tight truncate">
                                     {{ formatarNome(aluno.nome) }}
                                 </span>
                                 <!-- Resumo de Curso e Data no Mobile -->
-                                <span class="md:hidden text-xs text-slate-500 truncate mt-0.5">
+                                <span class="md:hidden text-xs text-muted-foreground truncate mt-0.5">
                                     {{ mat.curso?.nome || 'Curso Desconhecido' }} • {{ formatarDataBR(mat.data_conclusao) }}
                                 </span>
                             </div>
@@ -201,11 +201,11 @@
 
                         <!-- Dados e Ações (Direita) -->
                         <div class="flex items-center gap-2 md:gap-4 shrink-0">
-                            <div class="hidden md:block w-48 text-sm font-medium text-slate-700 truncate">
+                            <div class="hidden md:block w-48 text-sm font-medium text-foreground truncate">
                                 {{ mat.curso?.nome || 'Curso Desconhecido' }}
                             </div>
 
-                            <div class="hidden md:block w-32 text-center text-sm text-slate-500">
+                            <div class="hidden md:block w-32 text-center text-sm text-muted-foreground">
                                 {{ formatarDataBR(mat.data_conclusao) }}
                             </div>
 
@@ -213,27 +213,27 @@
                             <div class="hidden md:flex w-40 justify-center">
                                 <Dropdown align="center" class="static">
                                     <template #trigger>
-                                        <div class="cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded-md shadow-sm">
+                                        <div class="cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 bg-background border border-border px-2 py-1 rounded-md shadow-sm">
                                             <Badge :variant="getConfigCertificado(mat.situacao_certificado).variant" class="text-[9px] md:text-[10px] px-1.5 md:px-2 py-0 uppercase whitespace-nowrap">
                                                 {{ getConfigCertificado(mat.situacao_certificado).texto }}
                                             </Badge>
-                                            <ChevronDown class="w-3 h-3 text-slate-400" />
+                                            <ChevronDown class="w-3 h-3 text-muted-foreground" />
                                         </div>
                                     </template>
                                     <template #content>
-                                        <div class="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-border">
+                                        <div class="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 border-b border-border">
                                             Status do Certificado
                                         </div>
-                                        <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-medium">
+                                        <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors text-xs font-medium cursor-pointer">
                                             <MinusCircle size="14"/> Não Solicitado
                                         </button>
-                                        <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-amber-50 text-amber-600 transition-colors text-xs font-medium">
+                                        <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors text-xs font-medium cursor-pointer">
                                             <Clock size="14"/> Pendente
                                         </button>
-                                        <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-blue-50 text-blue-600 transition-colors text-xs font-medium">
+                                        <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 transition-colors text-xs font-medium cursor-pointer">
                                             <FileCheck size="14"/>Emitido
                                         </button>
-                                        <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 transition-colors text-xs font-medium border-t border-slate-100">
+                                        <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-colors text-xs font-medium border-t border-border cursor-pointer">
                                             <CheckCircle size="14"/> Entregue
                                         </button>
                                     </template>
@@ -244,22 +244,22 @@
                             <div class="w-auto md:w-16 flex justify-center">
                                 <Dropdown align="right">
                                     <template #trigger>
-                                        <Button size="sm" variant="outline" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-2 rounded-md transition-colors shadow-sm">
+                                        <Button size="sm" variant="outline" class="bg-background border border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm">
                                             <Menu class="w-4 h-4" />
                                         </Button>
                                     </template>
                                     <template #content>
-                                        <div class="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-border">
+                                        <div class="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 border-b border-border">
                                             Reverter Conclusão
                                         </div>
-                                        <button @click="atualizarSituacao(mat.id, 'cursando')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors">
+                                        <button @click="atualizarSituacao(mat.id, 'cursando')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer">
                                             <Clock class="w-4 h-4" /> Voltar para Cursando
                                         </button>
-                                        <button @click="atualizarSituacao(mat.id, 'trancado')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors">
+                                        <button @click="atualizarSituacao(mat.id, 'trancado')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer">
                                             <PauseCircle class="w-4 h-4" /> Marcar como Trancado
                                         </button>
                                         <hr class="my-1 border-border" />
-                                        <button @click="atualizarSituacao(mat.id, 'cancelado')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                        <button @click="atualizarSituacao(mat.id, 'cancelado')" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer">
                                             <XCircle class="w-4 h-4" /> Cancelar Matrícula
                                         </button>
                                     </template>

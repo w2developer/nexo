@@ -209,17 +209,17 @@
             <CardContent class="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <!-- Info do Aluno -->
                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0">
+                    <Button variant="outline" size="sm" @click="router.back()" class="px-2.5 shrink-0 bg-background text-foreground border-border hover:bg-muted">
                         <ArrowLeft class="w-4 h-4" />
                     </Button>
 
                     <template v-if="!carregando && matricula">
                         <Avatar :name="matricula.aluno?.nome" class="shrink-0" />
                         <div class="min-w-0 flex-1">
-                            <h2 class="font-bold text-base sm:text-lg text-slate-900 leading-tight truncate">
+                            <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                 {{ formatarNome(matricula.aluno?.nome) }}
                             </h2>
-                            <p class="text-xs text-slate-500 truncate">
+                            <p class="text-xs text-muted-foreground truncate">
                                 {{ matricula.curso?.nome || 'Curso não informado' }} • Cód: {{ matricula.aluno?.codigo }}
                             </p>
                         </div>
@@ -240,7 +240,7 @@
                             size="sm" 
                             @click="limparTudo" 
                             :disabled="salvando || totalHorasAtivas === 0"
-                            class="text-slate-600"
+                            class="text-muted-foreground hover:text-foreground"
                         >
                             <RotateCcw class="w-4 h-4 mr-1" />
                             Limpar
@@ -265,7 +265,7 @@
         <Card v-if="!carregando">
             <CardContent class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold text-slate-700">
+                    <span class="text-sm font-semibold text-foreground">
                         Ativar turno na semana toda (Seg a Sáb):
                     </span>
                 </div>
@@ -282,7 +282,7 @@
                             :model-value="isTurnoSemanaCompleta(turno.value)"
                             @update:model-value="toggleTurnoSemana(turno.value, $event)"
                         />
-                        <label :for="'switch-global-' + turno.value" class="text-sm font-medium text-slate-700 cursor-pointer select-none">
+                        <label :for="'switch-global-' + turno.value" class="text-sm font-medium text-foreground cursor-pointer select-none">
                             {{ turno.label }}
                         </label>
                     </div>
@@ -301,23 +301,23 @@
                     v-for="dia in DIAS_SEMANA_GRADE" 
                     :key="dia.value"
                     class="border-b border-border last:border-0 flex flex-col transition-colors"
-                    :class="{'bg-slate-50/40': diaExpandido === dia.value}"
+                    :class="{'bg-muted/40': diaExpandido === dia.value}"
                 >
                     <!-- Linha Principal do Dia -->
                     <div 
-                        class="flex items-center justify-between gap-3 p-3.5 md:p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        class="flex items-center justify-between gap-3 p-3.5 md:p-4 cursor-pointer hover:bg-muted/60 transition-colors"
                         @click="toggleExpandirDia(dia.value)"
                     >
                         <!-- Esquerda: Seta + Nome do Dia + Contador -->
                         <div class="flex items-center gap-3 min-w-0">
                             <div 
-                                class="text-slate-400 transition-transform duration-300 ease-in-out shrink-0"
-                                :class="{'rotate-90 text-indigo-600': diaExpandido === dia.value}"
+                                class="text-muted-foreground transition-transform duration-300 ease-in-out shrink-0"
+                                :class="{'rotate-90 text-indigo-600 dark:text-indigo-400': diaExpandido === dia.value}"
                             >
                                 <ChevronRight class="w-5 h-5" />
                             </div>
 
-                            <span class="font-bold text-slate-900 text-sm sm:text-base">
+                            <span class="font-bold text-foreground text-sm sm:text-base">
                                 {{ dia.label }}
                             </span>
 
@@ -331,7 +331,7 @@
 
                         <!-- Direita: Switch do Dia Todo (Cor: Emerald) -->
                         <div class="flex items-center gap-2 shrink-0" @click.stop>
-                            <label :for="`dia-${dia.value}`" class="text-xs font-medium text-slate-600 cursor-pointer select-none">
+                            <label :for="`dia-${dia.value}`" class="text-xs font-medium text-muted-foreground cursor-pointer select-none">
                                 Dia todo
                             </label>
                             <Switch 
@@ -349,19 +349,19 @@
                         :class="diaExpandido === dia.value ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
                     >
                         <div class="overflow-hidden">
-                            <div class="p-4 pt-1 pl-4 md:pl-12 bg-slate-50/50 border-t border-slate-100">
+                            <div class="p-4 pt-1 pl-4 md:pl-12 bg-muted/30 border-t border-border">
                                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2">
                                     <!-- Card de cada Turno -->
                                     <div 
                                         v-for="turno in TURNOS_GRADE" 
                                         :key="`${dia.value}-${turno.value}`"
-                                        class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm space-y-3"
+                                        class="bg-background p-3.5 rounded-lg border border-border shadow-sm space-y-3"
                                     >
                                         <!-- Cabeçalho do Turno (Cor: Amber) -->
-                                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                        <div class="flex items-center justify-between pb-2 border-b border-border">
                                             <div class="flex items-center gap-1.5">
                                                 <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                                <span class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                                <span class="text-xs font-bold uppercase tracking-wider text-foreground">
                                                     {{ turno.label }}
                                                 </span>
                                             </div>
@@ -369,7 +369,7 @@
                                             <div class="flex items-center gap-2">
                                                 <label 
                                                     :for="`turno-${dia.value}-${turno.value}`" 
-                                                    class="text-[11px] font-medium text-slate-500 cursor-pointer select-none"
+                                                    class="text-[11px] font-medium text-muted-foreground cursor-pointer select-none"
                                                 >
                                                     Turno completo
                                                 </label>
@@ -389,8 +389,8 @@
                                                 :key="slot.hora_inicio"
                                                 class="flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors"
                                                 :class="isSlotAtivo(dia.value, turno.value, slot.hora_inicio) 
-                                                    ? 'bg-indigo-50/60 border-indigo-200 text-indigo-950' 
-                                                    : 'bg-slate-50/50 border-slate-200 text-slate-600'"
+                                                    ? 'bg-indigo-50/60 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-950 dark:text-indigo-100' 
+                                                    : 'bg-muted/50 border-border text-muted-foreground'"
                                             >
                                                 <label 
                                                     :for="`slot-${dia.value}-${turno.value}-${slot.hora_inicio}`"

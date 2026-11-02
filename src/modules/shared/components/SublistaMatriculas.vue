@@ -20,15 +20,15 @@
 
 <template>
     <div class="p-3 pt-0 pl-11 md:p-4 md:pt-0 md:pl-16">
-        <div v-if="!matriculas || matriculas.length === 0" class="mt-2 text-sm text-slate-500 italic">
+        <div v-if="!matriculas || matriculas.length === 0" class="mt-2 text-sm text-muted-foreground italic">
             Nenhum histórico de matrículas.
         </div>
 
         <template v-else>
             <!-- Visualização Desktop -->
-            <div class="hidden md:block mt-2 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+            <div class="hidden md:block mt-2 bg-background border border-border rounded-lg shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader class="bg-slate-50">
+                    <TableHeader class="bg-muted/50">
                         <TableRow>
                             <TableHead class="pl-4 text-xs">Curso</TableHead>
                             <TableHead class="text-xs">Situação</TableHead>
@@ -39,29 +39,29 @@
                     </TableHeader>
                     <TableBody>
                         <TableRow v-for="mat in matriculas" :key="mat.id">
-                            <TableCell class="pl-4 py-2 font-medium text-sm text-slate-700">
+                            <TableCell class="pl-4 py-2 font-medium text-sm text-foreground">
                                 {{ mat.curso?.nome || 'Curso Desconhecido' }}
                             </TableCell>
                             <TableCell class="py-2">
                                 <Badge 
                                     :variant="getBadgeVariantMatricula(mat.situacao)" 
-                                    class="text-[10px] px-2 py-0"
-                                    :class="mat.situacao === 'cursando' ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : ''"
+                                    class="text-[10px] px-2 py-0 transition-colors"
+                                    :class="mat.situacao === 'cursando' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25' : ''"
                                 >
                                     {{ capitalizar(mat.situacao) }}
                                 </Badge>
                             </TableCell>
-                            <TableCell class="py-2 text-sm text-slate-500">
+                            <TableCell class="py-2 text-sm text-muted-foreground">
                                 {{ formatarDataBR(mat.data_inicio) }}
                             </TableCell>
-                            <!-- <TableCell class="py-2 text-sm text-slate-500">
+                            <!-- <TableCell class="py-2 text-sm text-muted-foreground">
                                 {{ formatarDataBR(mat.data_conclusao || mat.data_fim) }}
                             </TableCell> -->
                             <TableCell class="pr-4 py-2 text-end">
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    class="h-7 px-2 text-xs" 
+                                    class="h-7 px-2 text-xs bg-background border-border text-foreground hover:bg-muted transition-colors" 
                                     @click="emit('ver-detalhes', mat)"
                                 >
                                     Ver Detalhes
@@ -77,20 +77,20 @@
                 <div 
                     v-for="mat in matriculas" 
                     :key="'mob-' + mat.id"
-                    class="flex items-center justify-between p-2 rounded-md bg-white border border-slate-100"
+                    class="flex items-center justify-between p-2 rounded-md bg-background border border-border shadow-sm"
                 >
                     <div class="flex flex-col min-w-0 pr-2">
-                        <span class="text-sm font-medium text-slate-700 truncate">
+                        <span class="text-sm font-medium text-foreground truncate">
                             {{ mat.curso?.nome || 'Curso Desconhecido' }}
                         </span>
-                        <span class="text-xs text-slate-400">
+                        <span class="text-xs text-muted-foreground">
                             {{ formatarDataBR(mat.data_inicio) }}
                         </span>
                     </div>
                     <Badge 
                         :variant="getBadgeVariantMatricula(mat.situacao)" 
-                        class="text-[10px] px-2 py-0 shrink-0"
-                        :class="mat.situacao === 'cursando' ? 'bg-amber-100 text-amber-700 border-amber-200' : ''"
+                        class="text-[10px] px-2 py-0 shrink-0 transition-colors"
+                        :class="mat.situacao === 'cursando' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : ''"
                     >
                         {{ capitalizar(mat.situacao) }}
                     </Badge>
