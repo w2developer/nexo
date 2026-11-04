@@ -228,9 +228,9 @@
             for (const mat of alteradas) {
                 const original = JSON.parse(matriculasOriginais.value[mat.id]);
 
-                // Define data atual se mudou para concluído
+                // Mantém data editada se já era concluído, ou define hoje ao concluir
                 const dataConclusaoFinal = mat.situacao === 'concluido'
-                    ? (original.situacao !== 'concluido' || !mat.data_conclusao ? getDataHojeISO() : mat.data_conclusao)
+                    ? (mat.data_conclusao || getDataHojeISO())
                     : null;
 
                 const { error: erroMat } = await supabase
@@ -532,6 +532,10 @@
 
                                         <FormGroup label="Previsão de Término" :id="`fim-${mat.id}`">
                                             <Input v-model="mat.data_fim" type="date" />
+                                        </FormGroup>
+
+                                        <FormGroup v-if="mat.situacao === 'concluido'" label="Data de Conclusão" :id="`conclusao-${mat.id}`">
+                                            <Input v-model="mat.data_conclusao" type="date" />
                                         </FormGroup>
 
                                         <FormGroup label="Última Presença" :id="`presenca-${mat.id}`">
