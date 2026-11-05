@@ -30,8 +30,7 @@
 
     const router = useRouter();
 
-    const alunosBrutos = ref([]);
-    const registrosRematricula = ref([]);
+    const filasBrutas = ref([]);
     const carregando = ref(true);
     const tipoUsuario = ref('secretaria');
     let realtimeChannel = null;
@@ -51,130 +50,62 @@
     const modalAberto = ref(false);
     const itemSelecionado = ref(null);
 
-    const calcularDiasRestantes = (dataFimStr) => {
-        if (!dataFimStr) return null;
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const fim = new Date(dataFimStr + 'T00:00:00');
-        return Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24));
-    };
-
+    // Consulta direto da View do PostgreSQL
     const carregarDados = async (silencioso = false) => {
         if (!silencioso) carregando.value = true;
 
         try {
-            const [resAlunos, resRematriculas] = await Promise.all([
-                supabase
-                    .from('aluno')
-                    .select(`
-                        id, nome, codigo, ativo,
-                        matricula (
-                            id, situacao, data_inicio, data_fim, data_conclusao,
-                            curso (id, nome)
-                        )
-                    `)
-                    .eq('ativo', true)
-                    .order('nome'),
-                supabase
-                    .from('controle_rematricula')
-                    .select('*')
-            ]);
+            const { data, error } = await supabase
+                .from('vw_fila_rematricula')
+                .select('*');
 
-            if (resAlunos.error) throw resAlunos.error;
-            if (resRematriculas.error) throw resRematriculas.error;
-
-            alunosBrutos.value = resAlunos.data || [];
-            registrosRematricula.value = resRematriculas.data || [];
+            if (error) throw error;
+            filasBrutas.value = data || [];
         } catch (err) {
-            console.error('Erro ao carregar dados de rematrícula:', err);
+            console.error('Erro ao carregar fila de rematrícula:', err);
             toast.error('Erro', 'Não foi possível carregar a fila de rematrículas.');
         } finally {
             if (!silencioso) carregando.value = false;
         }
     };
 
-    // Cruza os critérios de elegibilidade com os registros salvos
+    // Formata os registros vindos da View para exibição
     const qualificados = computed(() => {
-        const mapaRematricula = new Map();
-        registrosRematricula.value.forEach(reg => {
-            mapaRematricula.set(reg.aluno_id, reg);
-        });
+        return filasBrutas.value.map(row => {
+            let motivoQualificacao = '100% Concluído';
+            let resumoCurso = `Último concluído: ${row.curso_gatilho_nome}`;
 
-        const lista = [];
-
-        alunosBrutos.value.forEach(aluno => {
-            const matriculas = aluno.matricula || [];
-            const regSalvo = mapaRematricula.get(aluno.id);
-
-            if (matriculas.length === 0 && !regSalvo) return;
-
-            const cursando = matriculas.filter(m => m.situacao === 'cursando');
-            const concluidas = matriculas.filter(m => m.situacao === 'concluido');
-            const aguardando = matriculas.filter(m => m.situacao === 'aguardando');
-
-            // Ignora alunos que já têm curso "aguardando" (exceto se já registrados como rematriculados aqui)
-            if (aguardando.length > 0 && regSalvo?.status !== 'rematriculado') {
-                return;
-            }
-
-            let cursoRetaFinal = null;
-            let menorPrazo = Infinity;
-
-            cursando.forEach(m => {
-                const dias = calcularDiasRestantes(m.data_fim);
-                if (dias !== null && dias <= 30 && dias < menorPrazo) {
-                    menorPrazo = dias;
-                    cursoRetaFinal = m;
-                }
-            });
-
-            const todosConcluidos = cursando.length === 0 && aguardando.length === 0 && concluidas.length > 0;
-
-            if (!cursoRetaFinal && !todosConcluidos && !regSalvo) return;
-
-            let origem = 'historico';
-            let motivoQualificacao = 'Acompanhamento';
-            let resumoCurso = '';
-
-            if (aguardando.length > 0) {
-                origem = 'reta_final';
-                motivoQualificacao = 'Próximo Garantido';
-                const proximo = aguardando[aguardando.length - 1];
-                resumoCurso = `Aguardando: ${proximo?.curso?.nome || 'Curso'}`;
-            } else if (cursoRetaFinal) {
-                origem = 'reta_final';
-                motivoQualificacao = menorPrazo < 0
-                    ? `Vencido há ${Math.abs(menorPrazo)}d`
-                    : menorPrazo === 0
+            if (row.origem === 'reta_final') {
+                const dias = row.dias_restantes;
+                motivoQualificacao = dias < 0
+                    ? `Vencido há ${Math.abs(dias)}d`
+                    : dias === 0
                         ? 'Termina hoje'
-                        : `Faltam ${menorPrazo} dias`;
-                resumoCurso = `Terminando: ${cursoRetaFinal.curso?.nome || 'Curso'}`;
-            } else if (todosConcluidos) {
-                origem = 'concluido';
-                motivoQualificacao = '100% Concluído';
-                const ultima = concluidas[concluidas.length - 1];
-                resumoCurso = `Último concluído: ${ultima?.curso?.nome || 'Curso'}`;
-            } else {
-                const ultimoCurso = matriculas[matriculas.length - 1];
-                resumoCurso = `Curso atual: ${ultimoCurso?.curso?.nome || 'Curso'}`;
+                        : `Faltam ${dias} dias`;
+                resumoCurso = `Terminando: ${row.curso_gatilho_nome}`;
             }
 
-            lista.push({
-                aluno,
-                origem,
+            return {
+                aluno: {
+                    id: row.aluno_id,
+                    nome: row.aluno_nome,
+                    codigo: row.aluno_codigo
+                },
+                matriculaGatilhoId: row.matricula_gatilho_id,
+                cursoGatilhoNome: row.curso_gatilho_nome,
+                origem: row.origem,
                 motivoQualificacao,
                 resumoCurso,
-                status: regSalvo?.status || 'pendente',
-                usuario_nome: regSalvo?.usuario_nome || null,
-                observacao: regSalvo?.observacao || null,
-                historico: regSalvo?.historico || [],
-                atualizado_em: regSalvo?.atualizado_em || null
-            });
+                status: row.status,
+                usuario_nome: row.usuario_nome,
+                observacao: row.observacao,
+                historico: row.historico || [],
+                atualizado_em: row.atualizado_em
+            };
         });
-
-        return lista;
     });
 
+    // Contadores para os KPIs
     const contadores = computed(() => {
         const base = {
             pendente: 0,
@@ -188,6 +119,7 @@
         return base;
     });
 
+    // Filtros combinados
     const itensFiltrados = computed(() => {
         const termo = termoPesquisa.value.toLowerCase().trim();
 
@@ -203,6 +135,7 @@
         });
     });
 
+    // Estilo do Badge de status comercial
     const badgeStatus = (status) => {
         const configs = {
             pendente: {
@@ -240,12 +173,16 @@
 
         carregarDados();
 
+        // Sincroniza quando houver alteração em matrículas, alunos ou atendimentos
         realtimeChannel = supabase
-            .channel('rematricula_realtime')
+            .channel('rematricula_view_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'controle_rematricula' }, () => {
                 carregarDados(true);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
+                carregarDados(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'aluno' }, () => {
                 carregarDados(true);
             })
             .subscribe();
@@ -356,7 +293,7 @@
         <!-- Painel Principal -->
         <Card class="min-h-[60dvh] flex flex-col">
             <CardHeader class="p-4 border-b border-border flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3">
-                <!-- Abas de Status (sem quebra de botão órfão) -->
+                <!-- Abas de Status -->
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1 2xl:pb-0">
                     <Button
                         size="sm"
@@ -400,7 +337,7 @@
                     </Button>
                 </div>
 
-                <!-- Busca e Critério alinhados na mesma altura (h-9) -->
+                <!-- Busca e Critério alinhados (h-9) -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
                     <div class="relative flex-1 sm:w-60">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -426,7 +363,7 @@
             </div>
 
             <CardContent v-else class="p-0 flex-1">
-                <!-- VISUALIZAÇÃO MOBILE (Focada em leitura rápida sem corte horizontal) -->
+                <!-- VISUALIZAÇÃO MOBILE -->
                 <div class="md:hidden divide-y divide-border">
                     <div
                         v-for="item in itensFiltrados"
@@ -448,7 +385,6 @@
                             </div>
                         </div>
 
-                        <!-- Badges de Status e Critério visíveis no celular -->
                         <div class="flex flex-wrap items-center justify-between gap-2 pl-11">
                             <div class="flex flex-wrap items-center gap-1.5">
                                 <Badge
@@ -481,7 +417,7 @@
                     </div>
                 </div>
 
-                <!-- VISUALIZAÇÃO DESKTOP (Tabela Completa) -->
+                <!-- VISUALIZAÇÃO DESKTOP -->
                 <div class="hidden md:block">
                     <Table>
                         <TableHeader class="bg-muted/50">
@@ -505,7 +441,7 @@
                                                 {{ formatarNome(item.aluno.nome) }}
                                             </span>
                                             <span class="text-xs text-muted-foreground truncate">
-                                                {{ item.resumoCurso }}
+                                                {{ item.resumoCurso }} • Cód: {{ item.aluno.codigo }}
                                             </span>
                                         </div>
                                     </div>
@@ -524,7 +460,7 @@
                                     </Badge>
                                 </TableCell>
 
-                                <!-- Status Comercial (Limpo) -->
+                                <!-- Status Comercial -->
                                 <TableCell class="text-center">
                                     <Badge
                                         variant="secondary"
@@ -535,7 +471,7 @@
                                     </Badge>
                                 </TableCell>
 
-                                <!-- Último Atendimento (Apenas data e contador clicável) -->
+                                <!-- Último Atendimento -->
                                 <TableCell class="text-center">
                                     <button
                                         v-if="item.atualizado_em"

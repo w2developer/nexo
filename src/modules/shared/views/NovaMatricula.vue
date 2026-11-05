@@ -2,7 +2,7 @@
     import { ref, computed, onMounted } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { ArrowLeft, Save, BookOpen, CheckCircle2 } from '@lucide/vue';
+    import { ArrowLeft, Save, BookOpen, CheckCircle2, Clock } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
     import { getHojeString } from '@/utils/dateHelpers';
@@ -27,7 +27,7 @@
     const salvando = ref(false);
     const aluno = ref(null);
     const todosCursos = ref([]);
-    const tipoUsuario = ref(null)
+    const tipoUsuario = ref(null);
 
     // Estado do formulário
     const form = ref({
@@ -35,6 +35,11 @@
         data_inicio: getHojeString(),
         data_fim: '',
         ead: false
+    });
+
+    // Verifica se o aluno já possui algum curso em andamento ('cursando')
+    const possuiCursoEmAndamento = computed(() => {
+        return (aluno.value?.matricula || []).some(m => m.situacao === 'cursando');
     });
 
     // Filtra cursos ainda não vinculados ao aluno
@@ -87,7 +92,7 @@
         }
     };
 
-    // Cria matrícula e redireciona para definir horários
+    // Cria matrícula ('aguardando' se já tiver curso ativo, senão 'cursando') e redireciona
     const salvarMatricula = async () => {
         if (!form.value.curso_id) {
             toast.error("Atenção", "Selecione um curso para a matrícula.");
@@ -101,10 +106,12 @@
 
         salvando.value = true;
         try {
+            const situacaoInicial = possuiCursoEmAndamento.value ? 'aguardando' : 'cursando';
+
             const payload = {
                 aluno_id: alunoId,
                 curso_id: Number(form.value.curso_id),
-                situacao: 'cursando',
+                situacao: situacaoInicial,
                 data_inicio: form.value.data_inicio,
                 data_fim: form.value.data_fim || null,
                 ead: form.value.ead,
@@ -119,7 +126,11 @@
 
             if (error) throw error;
 
-            toast.success("Sucesso", "Matrícula criada! Defina agora os horários.");
+            const msgToast = situacaoInicial === 'aguardando'
+                ? "Matrícula registrada como Aguardando! Defina agora os horários."
+                : "Matrícula criada! Defina agora os horários.";
+
+            toast.success("Sucesso", msgToast);
             router.replace(`/${tipoUsuario.value}/horarios/${novaMatricula.id}`);
         } catch (err) {
             console.error("Erro ao criar matrícula:", err);
@@ -129,14 +140,14 @@
         }
     };
 
-    // 2. Acesse o sessionStorage ee pega o tipo de user
+    // Recupera o tipo de usuário da sessão
     onMounted(() => {
-        const sessionUsuario = sessionStorage.getItem('tipo_usuario')
+        const sessionUsuario = sessionStorage.getItem('tipo_usuario');
         
         if (sessionUsuario !== null) {
-            tipoUsuario.value = sessionUsuario
+            tipoUsuario.value = sessionUsuario;
         }
-    })
+    });
 
     onMounted(carregarDados);
 </script>
@@ -221,8 +232,18 @@
 
             <!-- Formulário 2x2 -->
             <Card>
-                <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
+                <CardHeader class="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h3 class="font-bold text-base text-foreground">Dados da Nova Matrícula</h3>
+
+                    <!-- Indicador automático de status inicial -->
+                    <Badge
+                        v-if="possuiCursoEmAndamento"
+                        variant="secondary"
+                        class="w-fit flex items-center gap-1.5 bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 text-[11px]"
+                    >
+                        <Clock class="w-3 h-3" />
+                        Entrará como Aguardando (aluno já possui curso em andamento)
+                    </Badge>
                 </CardHeader>
 
                 <CardContent class="p-4">
