@@ -46,11 +46,11 @@ const routes = [
     ...secretariaRoutes,
 
     // Rotas Admin (Acesso total)
-    // {
-    //     path: '/admin',
-    //     component: () => import('../views/admin/Home.vue'),
-    //     meta: { roles: ['admin'] },
-    // },
+    {
+        path: '/admin',
+        component: () => import('@/layouts/AdminLayout.vue'),
+        meta: { roles: ['admin'] },
+    },
 ]
 
 const router = createRouter({ history: createWebHistory('/nexo/'), routes })
