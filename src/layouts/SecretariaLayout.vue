@@ -2,6 +2,7 @@
 import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
+import { toast } from '@/composables/useToast'
 
 // 1. Importações do Chat e Auth
 import { supabase } from '@/lib/supabase'
@@ -89,6 +90,12 @@ onMounted(() => {
         console.error("Erro ao ler sessão para o chat:", err);
     }
 })
+
+// function test() {
+//     toast.infinit("TESTE", "");
+// }
+
+test()
 </script>
 
 <template>

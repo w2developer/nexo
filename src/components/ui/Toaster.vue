@@ -1,5 +1,5 @@
 <script setup>
-import { X, CheckCircle2, AlertCircle, Info } from '@lucide/vue'
+import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from '@lucide/vue'
 import { useToast } from '../../composables/useToast'
 import { cn } from '../../utils/cn'
 
@@ -11,6 +11,7 @@ const variantStyles = {
     default: 'bg-background border-border text-foreground',
     success: 'bg-green-50 border-green-200 text-green-800',
     destructive: 'bg-red-50 border-red-200 text-red-800',
+    warning: 'bg-amber-50 border-amber-200 text-amber-800',
 }
 
 // Dicionário de ícones
@@ -18,6 +19,7 @@ const variantIcons = {
     default: Info,
     success: CheckCircle2,
     destructive: AlertCircle,
+    warning: AlertTriangle,
 }
 </script>
 

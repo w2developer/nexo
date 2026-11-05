@@ -31,6 +31,10 @@ export const toast = {
         useToast().add({ title, description, variant: 'default', duration }),
     success: (title, description = '', duration = 3000) =>
         useToast().add({ title, description, variant: 'success', duration }),
+    warning: (title, description = '', duration = 4000) =>
+        useToast().add({ title, description, variant: 'warning', duration }),
     error: (title, description = '', duration = 5000) =>
         useToast().add({ title, description, variant: 'destructive', duration }),
+    infinit: (title, description = '') =>
+        useToast().add({ title, description, variant: 'warning', duration: Infinity }),
 }
