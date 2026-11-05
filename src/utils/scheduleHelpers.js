@@ -25,32 +25,32 @@ export const TURNOS_GRADE = [
             { hora_inicio: '09:00', hora_fim: '10:00' },
             { hora_inicio: '10:00', hora_fim: '11:00' },
             { hora_inicio: '11:00', hora_fim: '12:00' },
-            { hora_inicio: '12:00', hora_fim: '13:00' }
+            // { hora_inicio: '12:00', hora_fim: '13:00' }
         ]
     },
     {
         value: 'tarde',
         label: 'Tarde',
         slots: [
-            { hora_inicio: '13:00', hora_fim: '14:00' },
+            // { hora_inicio: '13:00', hora_fim: '14:00' },
             { hora_inicio: '14:00', hora_fim: '15:00' },
             { hora_inicio: '15:00', hora_fim: '16:00' },
             { hora_inicio: '16:00', hora_fim: '17:00' },
             { hora_inicio: '17:00', hora_fim: '18:00' },
-            { hora_inicio: '18:00', hora_fim: '19:00' }
+            // { hora_inicio: '18:00', hora_fim: '19:00' }
         ]
     },
-    {
-        value: 'noite',
-        label: 'Noite',
-        slots: [
-            { hora_inicio: '19:00', hora_fim: '20:00' },
-            { hora_inicio: '20:00', hora_fim: '21:00' },
-            { hora_inicio: '21:00', hora_fim: '22:00' },
-            { hora_inicio: '22:00', hora_fim: '23:00' },
-            { hora_inicio: '23:00', hora_fim: '00:00' }
-        ]
-    }
+    // {
+    //     value: 'noite',
+    //     label: 'Noite',
+    //     slots: [
+    //         { hora_inicio: '19:00', hora_fim: '20:00' },
+    //         { hora_inicio: '20:00', hora_fim: '21:00' },
+    //         { hora_inicio: '21:00', hora_fim: '22:00' },
+    //         { hora_inicio: '22:00', hora_fim: '23:00' },
+    //         { hora_inicio: '23:00', hora_fim: '00:00' }
+    //     ]
+    // }
 ];
 
 // Cria identificador único para cada slot (ex: segunda-feira|manha|08:00)

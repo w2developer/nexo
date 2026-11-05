@@ -350,7 +350,7 @@
                     >
                         <div class="overflow-hidden">
                             <div class="p-4 pt-1 pl-4 md:pl-12 bg-muted/30 border-t border-border">
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
                                     <!-- Card de cada Turno -->
                                     <div 
                                         v-for="turno in TURNOS_GRADE" 
