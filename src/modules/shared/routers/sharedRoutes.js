@@ -8,6 +8,10 @@ export default [
         component: () => import('@/modules/shared/views/ControleConcluidos.vue'),
     },
     {
+        path: 'rematricula',
+        component: () => import('@/modules/shared/views/ControleRematricula.vue'),
+    },
+    {
         path: 'editar-aluno/:id',
         component: () => import('@/modules/shared/views/EditarAluno.vue'),
     },

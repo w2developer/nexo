@@ -1,67 +1,103 @@
 <script setup>
-import { ref } from 'vue'
-import { cn } from '../../utils/cn'
+    import { ref, nextTick, onUnmounted } from 'vue';
+    import { cn } from '@/utils/cn';
 
-const props = defineProps({
-    content: { type: String, required: true },
-    position: { type: String, default: 'top' }, // top, bottom, right, left
-})
+    const props = defineProps({
+        content: { type: String, required: true },
+        position: { type: String, default: 'top' } // top, bottom, right, left
+    });
 
-const isVisible = ref(false)
+    const isVisible = ref(false);
+    const triggerRef = ref(null);
+    const tooltipRef = ref(null);
+    const coords = ref({ top: 0, left: 0 });
+
+    // Calcula posição fixa na tela e evita corte nas bordas da janela
+    const atualizarPosicao = async () => {
+        if (!triggerRef.value) return;
+        await nextTick();
+        if (!tooltipRef.value) return;
+
+        const rect = triggerRef.value.getBoundingClientRect();
+        const tip = tooltipRef.value.getBoundingClientRect();
+        const gap = 8;
+        const margemTela = 8;
+
+        let top = 0;
+        let left = 0;
+
+        if (props.position === 'top') {
+            top = rect.top - tip.height - gap;
+            left = rect.left + (rect.width - tip.width) / 2;
+        } else if (props.position === 'bottom') {
+            top = rect.bottom + gap;
+            left = rect.left + (rect.width - tip.width) / 2;
+        } else if (props.position === 'left') {
+            top = rect.top + (rect.height - tip.height) / 2;
+            left = rect.left - tip.width - gap;
+        } else if (props.position === 'right') {
+            top = rect.top + (rect.height - tip.height) / 2;
+            left = rect.right + gap;
+        }
+
+        // Impede que o tooltip ultrapasse as laterais da tela
+        left = Math.max(margemTela, Math.min(left, window.innerWidth - tip.width - margemTela));
+        top = Math.max(margemTela, Math.min(top, window.innerHeight - tip.height - margemTela));
+
+        coords.value = { top, left };
+    };
+
+    const mostrar = () => {
+        isVisible.value = true;
+        atualizarPosicao();
+        window.addEventListener('scroll', esconder, true);
+        window.addEventListener('resize', esconder);
+    };
+
+    const esconder = () => {
+        isVisible.value = false;
+        window.removeEventListener('scroll', esconder, true);
+        window.removeEventListener('resize', esconder);
+    };
+
+    onUnmounted(() => {
+        esconder();
+    });
 </script>
 
 <template>
     <div
-        class="relative inline-block"
-        @mouseenter="isVisible = true"
-        @mouseleave="isVisible = false"
-        @focus="isVisible = true"
-        @blur="isVisible = false"
+        ref="triggerRef"
+        class="inline-flex"
+        @mouseenter="mostrar"
+        @mouseleave="esconder"
+        @focus="mostrar"
+        @blur="esconder"
     >
-        <!-- Elemento Gatilho -->
         <slot />
 
-        <!-- Conteúdo do Tooltip -->
-        <Transition
-            enter-active-class="transition duration-150 ease-out"
-            enter-from-class="opacity-0 scale-95"
-            enter-to-class="opacity-100 scale-100"
-            leave-active-class="transition duration-100 ease-in"
-            leave-from-class="opacity-100 scale-100"
-            leave-to-class="opacity-0 scale-95"
-        >
-            <div
-                v-show="isVisible"
-                :class="
-                    cn(
-                        'absolute z-50 rounded-md bg-foreground px-3 py-1.5 text-xs text-background shadow-md whitespace-nowrap pointer-events-none',
-                        position === 'top' &&
-                            'bottom-full left-1/2 -translate-x-1/2 -translate-y-2',
-                        position === 'bottom' && 'top-full left-1/2 -translate-x-1/2 translate-y-2',
-                        position === 'right' && 'left-full top-1/2 -translate-y-1/2 translate-x-2',
-                        position === 'left' && 'right-full top-1/2 -translate-y-1/2 -translate-x-2',
-                    )
-                "
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-150 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
             >
-                {{ content }}
-
-                <!-- Pequena seta invisível para dar espaçamento -->
                 <div
+                    v-if="isVisible && content"
+                    ref="tooltipRef"
+                    :style="{ top: `${coords.top}px`, left: `${coords.left}px` }"
                     :class="
                         cn(
-                            'absolute h-2 w-2 rotate-45 bg-foreground',
-                            position === 'top' &&
-                                'top-full left-1/2 -translate-x-1/2 -translate-y-1',
-                            position === 'bottom' &&
-                                'bottom-full left-1/2 -translate-x-1/2 translate-y-1',
-                            position === 'right' &&
-                                'right-full top-1/2 -translate-y-1/2 translate-x-1',
-                            position === 'left' &&
-                                'left-full top-1/2 -translate-y-1/2 -translate-x-1',
+                            'fixed z-[9999] rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-lg whitespace-nowrap pointer-events-none'
                         )
                     "
-                />
-            </div>
-        </Transition>
+                >
+                    {{ content }}
+                </div>
+            </Transition>
+        </Teleport>
     </div>
 </template>

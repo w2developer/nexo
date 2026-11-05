@@ -24,11 +24,6 @@ const navigation = [
         icon: ListTodo,
     },
     {
-        title: 'Cadastrar Aluno',
-        to: '/secretaria/cadastrar-aluno',
-        icon: ListPlus,
-    },
-    {
         title: 'Controle de Alunos',
         to: '/secretaria/alunos',
         icon: List,
@@ -37,6 +32,16 @@ const navigation = [
         title: 'Controle de Concluídos',
         to: '/secretaria/concluidos',
         icon: ListChecks,
+    },
+    // {
+    //     title: 'Controle de Rematrícula',
+    //     to: '/secretaria/rematricula',
+    //     icon: ListChecks,
+    // },
+    {
+        title: 'Cadastrar Aluno',
+        to: '/secretaria/cadastrar-aluno',
+        icon: ListPlus,
     },
     // {
     //     title: 'Mensagens',

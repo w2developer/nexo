@@ -232,12 +232,6 @@
                                             <BookOpen class="w-4 h-4" /> Nova Matrícula
                                         </button>
                                         <hr class="my-1 border-border" />
-                                        <button v-if="aluno.ativo" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer">
-                                            <UserX class="w-4 h-4" /> Desativar Aluno
-                                        </button>
-                                        <button v-else class="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer">
-                                            <UserCheck class="w-4 h-4" /> Reativar Aluno
-                                        </button>
                                         <button
                                             @click="abrirModalExclusao(aluno)"
                                             class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
