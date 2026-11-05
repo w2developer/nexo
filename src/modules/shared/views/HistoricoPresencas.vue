@@ -213,16 +213,9 @@
                                 <h2 class="font-bold text-base sm:text-lg text-slate-900 leading-tight truncate">
                                     {{ formatarNome(dadosMatricula.aluno?.nome) }}
                                 </h2>
-                                <Badge 
-                                    :variant="getBadgeVariantMatricula(dadosMatricula.situacao)"
-                                    class="text-[10px] px-2 py-0 shrink-0"
-                                >
-                                    {{ capitalizar(dadosMatricula.situacao) }}
-                                </Badge>
                             </div>
                             <p class="text-xs text-slate-500 truncate">
                                 Curso: <span class="font-medium text-slate-700">{{ dadosMatricula.curso?.nome }}</span>
-                                • Código: {{ dadosMatricula.aluno?.codigo }}
                             </p>
                         </div>
                     </template>
@@ -245,7 +238,7 @@
             <!-- Seção 1: Lançar Nova Presença -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center gap-2">
-                    <Calendar class="w-4 h-4 text-slate-500" />
+
                     <h3 class="font-bold text-base text-slate-900">Registrar Presença</h3>
                 </CardHeader>
                 <CardContent class="p-4">
@@ -272,7 +265,6 @@
             <Card class="overflow-hidden">
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <History class="w-5 h-5 text-slate-500" />
                         <h3 class="font-bold text-base text-slate-900">
                             Histórico de Presenças ({{ presencas.length }})
                         </h3>

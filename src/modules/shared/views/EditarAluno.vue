@@ -315,9 +315,6 @@
                                 <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                     {{ formatarNome(formAluno.nome) || 'Aluno sem nome' }}
                                 </h2>
-                                <Badge :variant="formAluno.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
-                                    {{ formAluno.ativo ? 'Ativo' : 'Inativo' }}
-                                </Badge>
                             </div>
                             <p class="text-xs text-muted-foreground truncate">
                                 Código: {{ formAluno.codigo || '---' }}
@@ -389,7 +386,6 @@
             <Card class="overflow-hidden">
                 <CardHeader class="p-4 border-b border-border flex flex-row items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <BookOpen class="w-5 h-5 text-muted-foreground" />
                         <h3 class="font-bold text-base text-foreground">
                             Matrículas Vinculadas ({{ matriculas.length }})
                         </h3>
@@ -437,10 +433,6 @@
                                         >
                                             {{ capitalizar(mat.situacao) }}
                                         </Badge>
-
-                                        <span class="text-xs text-muted-foreground hidden md:inline">
-                                            • Início: {{ formatarDataBR(mat.data_inicio) }}
-                                        </span>
                                     </div>
                                 </div>
                             </div>

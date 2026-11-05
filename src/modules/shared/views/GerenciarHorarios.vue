@@ -220,7 +220,7 @@
                                 {{ formatarNome(matricula.aluno?.nome) }}
                             </h2>
                             <p class="text-xs text-muted-foreground truncate">
-                                {{ matricula.curso?.nome || 'Curso não informado' }} • Cód: {{ matricula.aluno?.codigo }}
+                                {{ matricula.curso?.nome || 'Curso não informado' }}
                             </p>
                         </div>
                     </template>
@@ -360,7 +360,6 @@
                                         <!-- Cabeçalho do Turno (Cor: Amber) -->
                                         <div class="flex items-center justify-between pb-2 border-b border-border">
                                             <div class="flex items-center gap-1.5">
-                                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                                                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">
                                                     {{ turno.label }}
                                                 </span>

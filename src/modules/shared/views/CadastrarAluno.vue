@@ -113,9 +113,6 @@
                             <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                 {{ form.nome.trim() ? formatarNome(form.nome) : 'Novo Aluno' }}
                             </h2>
-                            <Badge :variant="form.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
-                                {{ form.ativo ? 'Ativo' : 'Inativo' }}
-                            </Badge>
                         </div>
                         <p class="text-xs text-muted-foreground truncate">
                             Código: {{ form.codigo.trim() || 'Não definido' }}
@@ -214,9 +211,6 @@
         <Card>
             <CardContent class="p-4 flex items-center justify-between gap-4">
                 <div class="flex items-start sm:items-center gap-3">
-                    <div class="p-2 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shrink-0">
-                        <BookOpen class="w-5 h-5" />
-                    </div>
                     <div>
                         <label for="switch-ir-matricula" class="text-sm font-bold text-foreground cursor-pointer select-none">
                             Vincular matrícula em seguida (Opcional)

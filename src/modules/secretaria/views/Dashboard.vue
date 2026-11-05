@@ -537,7 +537,7 @@
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
                                         <span class="text-xs text-muted-foreground truncate">
-                                            {{ item.curso?.nome }} • Cód: {{ item.aluno?.codigo }}
+                                            {{ item.curso?.nome }}
                                         </span>
                                     </div>
                                 </div>
@@ -618,7 +618,7 @@
                                             {{ formatarNome(item.aluno?.nome) }}
                                         </span>
                                         <span class="text-xs text-muted-foreground truncate">
-                                            {{ item.curso?.nome }} • Cód: {{ item.aluno?.codigo }}
+                                            {{ item.curso?.nome }}
                                         </span>
                                     </div>
                                 </div>
