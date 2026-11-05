@@ -94,8 +94,6 @@ onMounted(() => {
 // function test() {
 //     toast.infinit("TESTE", "");
 // }
-
-test()
 </script>
 
 <template>
