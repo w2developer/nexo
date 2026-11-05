@@ -1,7 +1,7 @@
 export const turnos = [
     {label: 'Manhã', value: 'manha'},
     {label: 'Tarde', value: 'tarde'},
-    {label: 'Noite', value: 'noite'},
+    // {label: 'Noite', value: 'noite'},
 ];
 
 export const diaSemana = [
@@ -19,15 +19,15 @@ export const horas = [
     {label: '10:00', value: '10:00', turno: 'manha'},
     {label: '11:00', value: '11:00', turno: 'manha'},
     {label: '12:00', value: '12:00', turno: 'manha'},
-    {label: '13:00', value: '13:00', turno: 'tarde'},
+    // {label: '13:00', value: '13:00', turno: 'tarde'},
     {label: '14:00', value: '14:00', turno: 'tarde'},
     {label: '15:00', value: '15:00', turno: 'tarde'},
     {label: '16:00', value: '16:00', turno: 'tarde'},
     {label: '17:00', value: '17:00', turno: 'tarde'},
     {label: '18:00', value: '18:00', turno: 'tarde'},
-    {label: '19:00', value: '19:00', turno: 'noite'},
-    {label: '20:00', value: '20:00', turno: 'noite'},
-    {label: '21:00', value: '21:00', turno: 'noite'},
-    {label: '22:00', value: '22:00', turno: 'noite'},
-    {label: '23:00', value: '23:00', turno: 'noite'},
+    // {label: '19:00', value: '19:00', turno: 'noite'},
+    // {label: '20:00', value: '20:00', turno: 'noite'},
+    // {label: '21:00', value: '21:00', turno: 'noite'},
+    // {label: '22:00', value: '22:00', turno: 'noite'},
+    // {label: '23:00', value: '23:00', turno: 'noite'},
 ];
