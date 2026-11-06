@@ -2,7 +2,14 @@
 import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
+import { usePendencias } from '@/composables/usePendencias';
 import { toast } from '@/composables/useToast'
+
+const { 
+    carregarDadosGlobais, 
+    listaFaltantes, 
+    listaCertificados 
+} = usePendencias();
 
 // 1. Importações do Chat e Auth
 import { supabase } from '@/lib/supabase'
@@ -90,6 +97,22 @@ onMounted(() => {
         console.error("Erro ao ler sessão para o chat:", err);
     }
 })
+
+onMounted(async () => {
+    await carregarDadosGlobais();
+    
+    const qtdFaltantes = listaFaltantes.value.length;
+    const qtdCertificados = listaCertificados.value.length;
+
+    if (qtdFaltantes > 0 && qtdCertificados > 0) {
+        toast.infinit("RESUMO DE PENDÊNCIAS", `Há ${qtdFaltantes} alunos precisando de contato e ${qtdCertificados} certificados aguardando emissão.`);
+    } else if (qtdFaltantes > 0) {
+        toast.infinit("ATENÇÃO", `${qtdFaltantes} alunos faltantes precisam de acompanhamento!`);
+    } else if (qtdCertificados > 0) {
+        toast.infinit("ATENÇÃO", `${qtdCertificados} certificados aguardando emissão/entrega.`);
+    }
+});
+
 
 // function test() {
 //     toast.infinit("TESTE", "");
