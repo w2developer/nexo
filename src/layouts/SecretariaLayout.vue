@@ -1,5 +1,5 @@
 <script setup>
-import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus } from '@lucide/vue'
+import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus, LayoutDashboard } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
 import { usePendencias } from '@/composables/usePendencias';
@@ -29,7 +29,7 @@ const navigation = [
     {
         title: 'Dashboard',
         to: '/secretaria/dashboard',
-        icon: ListTodo,
+        icon: LayoutDashboard,
     },
     {
         title: 'Controle de Alunos',
@@ -41,21 +41,16 @@ const navigation = [
         to: '/secretaria/concluidos',
         icon: ListChecks,
     },
-    // {
-    //     title: 'Controle de Rematrícula',
-    //     to: '/secretaria/rematricula',
-    //     icon: ListChecks,
-    // },
+    {
+        title: 'Controle de Rematrícula',
+        to: '/secretaria/rematricula',
+        icon: ListChecks,
+    },
     {
         title: 'Cadastrar Aluno',
         to: '/secretaria/cadastrar-aluno',
         icon: ListPlus,
     },
-    // {
-    //     title: 'Mensagens',
-    //     to: '/secretaria/mensagens',
-    //     icon: MessageCircle,
-    // },
     // {
     //     title: 'Configurações',
     //     to: '/secretaria/configuracoes',
@@ -105,7 +100,7 @@ onMounted(async () => {
     const qtdCertificados = listaCertificados.value.length;
 
     if (qtdFaltantes > 0 && qtdCertificados > 0) {
-        toast.infinit("RESUMO DE PENDÊNCIAS", `Há ${qtdFaltantes} alunos precisando de contato e ${qtdCertificados} certificados aguardando emissão.`);
+        toast.infinit("RESUMO DE PENDÊNCIAS", `Há ${qtdFaltantes} alunos precisando de contato e ${qtdCertificados} certificados aguardando emissão/entrega.`);
     } else if (qtdFaltantes > 0) {
         toast.infinit("ATENÇÃO", `${qtdFaltantes} alunos faltantes precisam de acompanhamento!`);
     } else if (qtdCertificados > 0) {
@@ -113,10 +108,6 @@ onMounted(async () => {
     }
 });
 
-
-// function test() {
-//     toast.infinit("TESTE", "");
-// }
 </script>
 
 <template>

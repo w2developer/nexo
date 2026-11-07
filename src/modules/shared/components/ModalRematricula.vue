@@ -98,6 +98,10 @@
 
             const payload = {
                 aluno_id: props.item.aluno.id,
+                
+                // 👇 A PEÇA QUE FALTAVA PARA A VIEW FUNCIONAR 👇
+                matricula_origem_id: props.item.matriculaGatilhoId, 
+                
                 status: statusSelecionado.value,
                 usuario_nome: nomeUsuarioLogado.value,
                 observacao: observacao.value.trim(),

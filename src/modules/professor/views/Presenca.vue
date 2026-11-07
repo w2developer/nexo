@@ -49,21 +49,17 @@
     import ModalConcluirAluno from '../components/ModalConcluirAluno.vue';
     import ModalExcluirAluno from '@/modules/shared/components/ModalExcluirAluno.vue';
 
-    // Estados da listagem
     const alunos = ref([]);
     const carregandoAlunos = ref(true);
     const erroAlunos = ref(false);
     const presencasConfirmadas = ref([]);
-    let realtimeChannel;
 
-    // Estados de filtro
     const termoPesquisa = ref('');
     const infoAtual = getHoraETurnoAtual();
     const turnoSelecionado = ref(infoAtual.turno);
     const diaSelecionando = ref(getDiaAtual());
     const horaSelecionada = ref(infoAtual.hora);
 
-    // Controle dos modais
     const modalConcluirAberto = ref(false);
     const matriculaSelecionada = ref(null);
     const modalExclusaoAberto = ref(false);
@@ -84,7 +80,6 @@
         alunos.value = alunos.value.filter(item => item.aluno_id !== alunoIdExcluido);
     };
 
-    // Marca ou desmarca presença com atualização otimista
     const togglePresenca = async (item) => {
         const dataHoje = getHojeString();
         const jaConfirmado = presencasConfirmadas.value.includes(item.id);
@@ -130,7 +125,6 @@
         }
     };
 
-    // Filtros e ordenação
     const horasFiltradas = computed(() => {
         if (!turnoSelecionado.value) return horas;
         return horas.filter(hora => hora.turno === turnoSelecionado.value);
@@ -174,7 +168,6 @@
         });
     });
 
-    // Busca matrículas ativas e presenças do dia
     const buscarAlunos = async (silencioso = false) => {
         try {
             if (!silencioso) carregandoAlunos.value = true;
@@ -199,22 +192,23 @@
         }
     };
 
+    // Função que recarrega a tabela quando ouve o Maestro
+    const atualizarSilencioso = () => buscarAlunos(true);
+
     onMounted(() => {
         buscarAlunos();
 
-        realtimeChannel = supabase
-            .channel('matricula_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
-                buscarAlunos(true);
-            })
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'aluno' }, () => {
-                buscarAlunos(true);
-            })
-            .subscribe();
+        // ESCUTANDO O MAESTRO
+        document.addEventListener('db-update-matricula', atualizarSilencioso);
+        document.addEventListener('db-update-aluno', atualizarSilencioso);
+        document.addEventListener('db-update-presenca', atualizarSilencioso);
     });
 
     onUnmounted(() => {
-        if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+        // PARANDO DE ESCUTAR AO SAIR DA TELA
+        document.removeEventListener('db-update-matricula', atualizarSilencioso);
+        document.removeEventListener('db-update-aluno', atualizarSilencioso);
+        document.removeEventListener('db-update-presenca', atualizarSilencioso);
     });
 </script>
 

@@ -2,19 +2,14 @@ import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
 import { parseData, getUltimaPresenca } from '@/utils/dateHelpers';
 
-// ==========================================
-// ESTADO GLOBAL (Fica fora da função!)
-// Compartilhado por todas as telas do sistema
-// ==========================================
 const matriculas = ref([]);
 const carregando = ref(false);
-let dadosJaCarregados = false; // Evita buscar no banco 2x se já tiver dados
+let dadosJaCarregados = false;
+let escutandoEventos = false; // Evita criar ouvintes duplicados
 
 export function usePendencias() {
 
-    // FUNÇÃO GLOBAL DE BUSCA
     const carregarDadosGlobais = async (forcarAtualizacao = false) => {
-        // Se já tem dados e não estamos forçando atualização, não faz nada
         if (dadosJaCarregados && !forcarAtualizacao) return;
 
         carregando.value = true;
@@ -34,6 +29,21 @@ export function usePendencias() {
             
             matriculas.value = data || [];
             dadosJaCarregados = true;
+
+            // ========================================================
+            // AQUI ESTÁ A MAGIA: O SINO COMEÇA A OUVIR O MAESTRO
+            // ========================================================
+            if (!escutandoEventos) {
+                escutandoEventos = true;
+                
+                // Função que manda recarregar os dados em segundo plano
+                const recarregarSilencioso = () => carregarDadosGlobais(true);
+                
+                document.addEventListener('db-update-matricula', recarregarSilencioso);
+                document.addEventListener('db-update-presenca', recarregarSilencioso);
+                document.addEventListener('db-update-contato', recarregarSilencioso);
+            }
+
         } catch (err) {
             console.error("Erro ao carregar pendências globais:", err);
         } finally {
@@ -44,7 +54,18 @@ export function usePendencias() {
     const limparDadosGlobais = () => {
         matriculas.value = [];
         dadosJaCarregados = false;
+        
+        // Remove os ouvintes ao sair
+        if (escutandoEventos) {
+            const recarregarSilencioso = () => carregarDadosGlobais(true);
+            document.removeEventListener('db-update-matricula', recarregarSilencioso);
+            document.removeEventListener('db-update-presenca', recarregarSilencioso);
+            document.removeEventListener('db-update-contato', recarregarSilencioso);
+            escutandoEventos = false;
+        }
     };
+
+    // ... [O RESTO DO SEU FICHEIRO CONTINUA AQUI PARA BAIXO] ...
 
     // Funções utilitárias de data internas
     const calcularDiferencaDias = (dateStr) => {

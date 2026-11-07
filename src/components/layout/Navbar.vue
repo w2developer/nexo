@@ -9,6 +9,9 @@ import Switch from '@/components/ui/Switch.vue';
 import { useTheme } from '@/composables/useTheme';
 
 import { usePendencias } from '@/composables/usePendencias';
+import { useRealtime } from '@/composables/useRealtime';
+
+const { iniciarConexaoGlobal, desconectarGlobal } = useRealtime();
 
 const { isDark } = useTheme();
 const { listaFaltantes, listaCertificados, carregarDadosGlobais, limparDadosGlobais } = usePendencias();
@@ -102,6 +105,11 @@ const totalNotificacoes = computed(() => {
 })
 
 onMounted(() => {
+    // 1. Liga o motor quando o Navbar carregar
+    iniciarConexaoGlobal();
+});
+
+onMounted(() => {
     const tipo = sessionStorage.getItem('tipo_usuario')
     const nome = sessionStorage.getItem('nome_usuario')
 
@@ -132,7 +140,7 @@ onMounted(() => {
         }
     }
 
-    if (tipo === 'secretaria' || tipo === 'admin') {
+    if (tipo === 'secretaria' || tipo === 'admin' || tipo === 'professor') {
         carregarDadosGlobais();
     }
 })
@@ -143,6 +151,7 @@ const handleLogout = () => {
     sessionStorage.removeItem('nome_usuario')
 
     limparDadosGlobais()
+    desconectarGlobal();
 
     router.push('/login')
 }

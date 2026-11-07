@@ -33,7 +33,6 @@
     const filasBrutas = ref([]);
     const carregando = ref(true);
     const tipoUsuario = ref('secretaria');
-    let realtimeChannel = null;
 
     // Filtros
     const statusFiltro = ref('todos');
@@ -166,6 +165,9 @@
     const irParaNovaMatricula = (alunoId) => {
         router.push(`/${tipoUsuario.value}/nova-matricula/${alunoId}`);
     };
+    
+    // Função unificada para atualizar os dados silenciosamente quando o Maestro emitir o evento
+    const atualizarSilencioso = () => carregarDados(true);
 
     onMounted(() => {
         const tipoSalvo = sessionStorage.getItem('tipo_usuario');
@@ -173,23 +175,17 @@
 
         carregarDados();
 
-        // Sincroniza quando houver alteração em matrículas, alunos ou atendimentos
-        realtimeChannel = supabase
-            .channel('rematricula_view_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'controle_rematricula' }, () => {
-                carregarDados(true);
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => {
-                carregarDados(true);
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'aluno' }, () => {
-                carregarDados(true);
-            })
-            .subscribe();
+        // 🎧 ESCUTANDO O MAESTRO (Em vez de abrir um canal isolado)
+        document.addEventListener('db-update-rematricula', atualizarSilencioso);
+        document.addEventListener('db-update-matricula', atualizarSilencioso);
+        document.addEventListener('db-update-aluno', atualizarSilencioso);
     });
 
     onUnmounted(() => {
-        if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+        // 🔇 PARANDO DE ESCUTAR AO SAIR DA TELA
+        document.removeEventListener('db-update-rematricula', atualizarSilencioso);
+        document.removeEventListener('db-update-matricula', atualizarSilencioso);
+        document.removeEventListener('db-update-aluno', atualizarSilencioso);
     });
 </script>
 
@@ -379,7 +375,7 @@
                                         {{ formatarNome(item.aluno.nome) }}
                                     </p>
                                     <p class="text-xs text-muted-foreground truncate mt-0.5">
-                                        {{ item.resumoCurso }} • Cód: {{ item.aluno.codigo }}
+                                        {{ item.resumoCurso }} - Cód: {{ item.aluno.codigo }}
                                     </p>
                                 </div>
                             </div>
@@ -441,7 +437,7 @@
                                                 {{ formatarNome(item.aluno.nome) }}
                                             </span>
                                             <span class="text-xs text-muted-foreground truncate">
-                                                {{ item.resumoCurso }} • Cód: {{ item.aluno.codigo }}
+                                                {{ item.resumoCurso }}
                                             </span>
                                         </div>
                                     </div>
@@ -450,11 +446,11 @@
                                 <!-- Critério -->
                                 <TableCell class="text-center">
                                     <Badge
-                                        variant="secondary"
+                                        variant="ghost"
                                         class="text-[11px]"
                                         :class="item.origem === 'reta_final'
-                                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                                            : 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'"
+                                            ? 'text-amber-700 dark:text-amber-400'
+                                            : 'text-emerald-700 dark:text-blue-400'"
                                     >
                                         {{ item.motivoQualificacao }}
                                     </Badge>

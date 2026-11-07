@@ -1,5 +1,5 @@
 <script setup>
-import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus } from '@lucide/vue'
+import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus, RefreshCw, LayoutDashboard } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
 
@@ -19,6 +19,11 @@ const { initChat } = useChat()
 
 const navigation = [
     {
+        title: 'Dashboard',
+        to: '/professor/dashboard',
+        icon: LayoutDashboard,
+    },
+    {
         title: 'Marcar Presença',
         to: '/professor/presenca',
         icon: ListTodo,
@@ -32,6 +37,11 @@ const navigation = [
         title: 'Controle de Concluídos',
         to: '/professor/concluidos',
         icon: ListChecks,
+    },
+    {
+        title: 'Controle de Rematrícula',
+        to: '/professor/rematricula',
+        icon: RefreshCw,
     },
     {
         title: 'Cadastrar Aluno',
