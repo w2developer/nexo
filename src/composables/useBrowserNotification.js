@@ -61,7 +61,8 @@ export function useBrowserNotification() {
         const notificacao = new Notification(titulo, {
             body: corpo,
             icon: '/favicon.ico',
-            tag: 'w2-chat-msg'
+            tag: 'w2-chat-msg',
+            requireInteraction: true
         });
 
         notificacao.onclick = () => {
