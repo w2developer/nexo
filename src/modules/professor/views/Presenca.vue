@@ -168,6 +168,13 @@
         });
     });
 
+    // Contagem de presentes hoje no filtro selecionado
+    const presentesNoFiltro = computed(() => {
+        return alunosListagem.value.filter(item => 
+            presencasConfirmadas.value.includes(item.id)
+        ).length;
+    });
+
     const buscarAlunos = async (silencioso = false) => {
         try {
             if (!silencioso) carregandoAlunos.value = true;
@@ -192,20 +199,20 @@
         }
     };
 
-    // Função que recarrega a tabela quando ouve o Maestro
+    // Recarrega a tabela silenciosamente via Realtime
     const atualizarSilencioso = () => buscarAlunos(true);
 
     onMounted(() => {
         buscarAlunos();
 
-        // ESCUTANDO O MAESTRO
+        // Listeners do Maestro
         document.addEventListener('db-update-matricula', atualizarSilencioso);
         document.addEventListener('db-update-aluno', atualizarSilencioso);
         document.addEventListener('db-update-presenca', atualizarSilencioso);
     });
 
     onUnmounted(() => {
-        // PARANDO DE ESCUTAR AO SAIR DA TELA
+        // Limpeza dos listeners
         document.removeEventListener('db-update-matricula', atualizarSilencioso);
         document.removeEventListener('db-update-aluno', atualizarSilencioso);
         document.removeEventListener('db-update-presenca', atualizarSilencioso);
@@ -215,7 +222,7 @@
 <template>
     <div class="space-y-6">
         <Card>
-            <CardHeader class="p-4 font-bold text-xl border-b border-border text-   ">
+            <CardHeader class="p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Filtros e Pesquisa</h2>
             </CardHeader>
             <CardContent class="p-4">
@@ -238,7 +245,7 @@
 
         <Card class="min-h-[100dvh] flex flex-col">
             <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border text-foreground">
-                <h2>Marcar Presença</h2>
+                <h2>Marcar Presença ({{ presentesNoFiltro }})</h2>
                 <Button variant="outline" @click="irParaDashboard">Dashboard</Button>
             </CardHeader>
 
