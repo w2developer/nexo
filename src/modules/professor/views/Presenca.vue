@@ -3,6 +3,7 @@
     import { supabase } from '@/lib/supabase';
     import { useRouter } from 'vue-router';
     import { Menu, UserPen, ClipboardClock, SquareCheck, Trash2, CopyPlus } from '@lucide/vue';
+    import Modal from '@/components/ui/Modal.vue'; // <-- Importação do Modal adicionada
 
     const router = useRouter();
 
@@ -68,6 +69,10 @@
     const matriculaSelecionada = ref(null);
     const modalExclusaoAberto = ref(false);
     const alunoParaExcluir = ref(null);
+    
+    // Variáveis para o Modal de Limpeza de Contatos
+    const modalLimparContatoAberto = ref(false);
+    const matriculaParaLimparContato = ref(null);
 
     const abrirModalConcluir = (item) => {
         matriculaSelecionada.value = item;
@@ -84,11 +89,48 @@
         alunos.value = alunos.value.filter(item => item.aluno_id !== alunoIdExcluido);
     };
 
-    const togglePresenca = async (item) => {
+    // 1. Função que verifica os contatos e abre o modal se necessário
+    const iniciarTogglePresenca = async (item) => {
+        const jaConfirmado = presencasConfirmadas.value.includes(item.id);
+
+        // Se estiver desmarcando, desmarca direto sem perguntar
+        if (jaConfirmado) {
+            efetivarTogglePresenca(item, false);
+            return;
+        }
+
+        try {
+            // Verifica se o aluno tem contatos registrados
+            const { data: contatos, error } = await supabase
+                .from('registro_contato')
+                .select('id')
+                .eq('matricula_id', item.id)
+                .limit(1);
+
+            if (error) throw error;
+
+            if (contatos && contatos.length > 0) {
+                // Tem contato! Abre o modal perguntando
+                matriculaParaLimparContato.value = item;
+                modalLimparContatoAberto.value = true;
+            } else {
+                // Não tem contato, marca a presença direto
+                efetivarTogglePresenca(item, false);
+            }
+        } catch (err) {
+            console.error("Erro ao verificar histórico de contato:", err);
+            // Em caso de erro na verificação, apenas marca a presença por segurança
+            efetivarTogglePresenca(item, false);
+        }
+    };
+
+    // 2. Função que realmente vai ao banco salvar ou remover a presença
+    const efetivarTogglePresenca = async (item, limparContatos = false) => {
         const dataHoje = getHojeString();
         const jaConfirmado = presencasConfirmadas.value.includes(item.id);
         const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
 
+        // Atualização Visual (Otimista)
         if (jaConfirmado) {
             presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
             if (alunoIndex !== -1 && alunos.value[alunoIndex].registro_presenca) {
@@ -105,6 +147,17 @@
         }
 
         try {
+            // Se o professor aceitou limpar os contatos no modal, apaga os registros do banco
+            if (!jaConfirmado && limparContatos) {
+                const { error: erroLimpeza } = await supabase
+                    .from('registro_contato')
+                    .delete()
+                    .eq('matricula_id', item.id);
+                
+                if (erroLimpeza) throw erroLimpeza;
+            }
+
+            // Marca ou desmarca a presença
             if (jaConfirmado) {
                 const { error } = await supabase
                     .from('registro_presenca')
@@ -122,10 +175,12 @@
                 .from('matricula')
                 .update({ atualizado_em: new Date().toISOString() })
                 .eq('id', item.id);
+                
+            modalLimparContatoAberto.value = false;
         } catch (err) {
             console.error("Erro ao salvar presença:", err);
-            toast.error("Erro", "Erro de conexão. A marcação foi desfeita.");
-            buscarAlunos(true);
+            toast.error("Erro", "Erro de conexão. A ação foi desfeita.");
+            buscarAlunos(true); // Reverte a interface em caso de falha
         }
     };
 
@@ -203,20 +258,16 @@
         }
     };
 
-    // Recarrega a tabela silenciosamente via Realtime
     const atualizarSilencioso = () => buscarAlunos(true);
 
     onMounted(() => {
         buscarAlunos();
-
-        // Listeners do Maestro
         document.addEventListener('db-update-matricula', atualizarSilencioso);
         document.addEventListener('db-update-aluno', atualizarSilencioso);
         document.addEventListener('db-update-presenca', atualizarSilencioso);
     });
 
     onUnmounted(() => {
-        // Limpeza dos listeners
         document.removeEventListener('db-update-matricula', atualizarSilencioso);
         document.removeEventListener('db-update-aluno', atualizarSilencioso);
         document.removeEventListener('db-update-presenca', atualizarSilencioso);
@@ -322,7 +373,7 @@
                                                 v-if="item.ead !== true"
                                                 size="sm" 
                                                 :variant="presencasConfirmadas.includes(item.id) ? 'outline' : 'default'"
-                                                @click="togglePresenca(item)" 
+                                                @click="iniciarTogglePresenca(item)" 
                                             >
                                                 {{ presencasConfirmadas.includes(item.id) ? 'Desfazer' : 'Presença' }}
                                             </Button>
@@ -406,6 +457,33 @@
             :aluno="alunoParaExcluir"
             @excluido="aoExcluirAluno"
         />
+
+        <!-- NOVO MODAL PARA LIMPEZA DE CONTATOS -->
+        <Modal 
+            v-model="modalLimparContatoAberto" 
+            title="Atenção: Aluno Monitorado" 
+            size="sm"
+        >
+            <div class="space-y-4 text-sm text-foreground">
+                <p>
+                    O aluno <strong>{{ formatarNome(matriculaParaLimparContato?.aluno?.nome) }}</strong> 
+                    possui registros de contato por ausência.
+                </p>
+                <p>
+                    Deseja marcar a presença e <strong>apagar</strong> o histórico de cobranças para que ele saia da lista de faltantes da secretaria?
+                </p>
+            </div>
+            
+            <template #footer>
+                <Button variant="ghost" @click="modalLimparContatoAberto = false">
+                    Cancelar
+                </Button>
+                <!-- Se aceitar, chama a função efetivando a presença e limpando os contatos -->
+                <Button variant="default" @click="efetivarTogglePresenca(matriculaParaLimparContato, true)">
+                    Marcar Presença e Limpar
+                </Button>
+            </template>
+        </Modal>
     </div>
 </template>
 
