@@ -8,9 +8,7 @@
     } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarDataBR, getHojeString } from '@/utils/dateHelpers';
-    import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
-    
-    // 1. Importa a Store Global que criamos
+    import { formatarNome } from '@/utils/formatters';
     import { usePendencias } from '@/composables/usePendencias';
 
     import Card from '@/components/ui/Card.vue';
@@ -39,7 +37,12 @@
         return route.path.startsWith('/secretaria') ? '/secretaria' : '/professor';
     });
 
-    // 2. Extrai as listas prontas e a função de buscar dados
+    // Nome do usuário logado
+    const nomeUsuarioLogado = computed(() => {
+        return sessionStorage.getItem('nome_usuario') || 'Colaborador';
+    });
+
+    // Store global de pendências
     const { 
         carregando,
         listaFaltantes, 
@@ -49,10 +52,9 @@
         carregarDadosGlobais 
     } = usePendencias();
 
-    // Estados da Interface (apenas controle visual)
+    // Estados da interface
     const abaAtiva = ref('faltantes');
     const termoPesquisa = ref('');
-    let realtimeChannel;
 
     const modalConcluirAberto = ref(false);
     const matriculaParaConcluir = ref(null);
@@ -62,7 +64,7 @@
     const observacaoContato = ref('');
     const salvandoContato = ref(false);
 
-    // Filtra a fila ativa pela busca na tela
+    // Filtra a fila ativa pela busca
     const itensExibidos = computed(() => {
         const termo = termoPesquisa.value.toLowerCase().trim();
         let base = [];
@@ -80,13 +82,13 @@
         );
     });
 
-    // Métodos de Interface
     const abrirModalContato = (item) => {
         itemContatoSelecionado.value = item;
         observacaoContato.value = '';
         modalContatoAberto.value = true;
     };
 
+    // Salva novo contato com nome do responsável
     const confirmarRegistroContato = async () => {
         if (!itemContatoSelecionado.value) return;
 
@@ -97,6 +99,7 @@
                 .insert([{
                     matricula_id: itemContatoSelecionado.value.id,
                     data_contato: getHojeString(),
+                    usuario_nome: nomeUsuarioLogado.value,
                     observacao: observacaoContato.value.trim() || null
                 }]);
 
@@ -105,7 +108,6 @@
             toast.success("Sucesso", `Contato com ${formatarNome(itemContatoSelecionado.value.aluno?.nome)} registrado!`);
             modalContatoAberto.value = false;
             
-            // 3. Força a atualização global após salvar algo novo
             carregarDadosGlobais(true);
         } catch (err) {
             console.error("Erro ao registrar contato:", err);
@@ -144,21 +146,25 @@
         router.push(`${basePath.value}/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
     };
 
+    // Atualização silenciosa via Maestro
+    const atualizarSilencioso = () => carregarDadosGlobais(true);
+
     onMounted(() => {
-        // Puxa os dados apenas se já não estiverem carregados
         carregarDadosGlobais();
 
-        // 4. Se o Realtime avisar que algo mudou no banco, forçamos o refresh global passando "true"
-        realtimeChannel = supabase
-            .channel('dashboard_secretaria_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matricula' }, () => carregarDadosGlobais(true))
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'registro_presenca' }, () => carregarDadosGlobais(true))
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'registro_contato' }, () => carregarDadosGlobais(true))
-            .subscribe();
+        // Listeners do Maestro
+        document.addEventListener('db-update-matricula', atualizarSilencioso);
+        document.addEventListener('db-update-presenca', atualizarSilencioso);
+        document.addEventListener('db-update-contato', atualizarSilencioso);
+        document.addEventListener('db-update-aluno', atualizarSilencioso);
     });
 
     onUnmounted(() => {
-        if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+        // Limpeza dos listeners
+        document.removeEventListener('db-update-matricula', atualizarSilencioso);
+        document.removeEventListener('db-update-presenca', atualizarSilencioso);
+        document.removeEventListener('db-update-contato', atualizarSilencioso);
+        document.removeEventListener('db-update-aluno', atualizarSilencioso);
     });
 </script>
 
@@ -333,8 +339,6 @@
 
                             <TableCell class="text-center hidden sm:table-cell">
                                 <div class="flex flex-col items-center">
-                                    <span class="text-sm font-semibold text-rose-600 dark:text-rose-400"></span>
-                                    
                                     <Tooltip :content="`Há ${item.diasAusente} dias sem vir`" position="top">
                                         <span class="text-xs text-muted-foreground cursor-help">
                                             {{ item.ultimaPresenca ? `${formatarDataBR(item.ultimaPresenca)}` : '---' }}
@@ -369,7 +373,7 @@
                                         Contatado
                                     </Badge>
 
-                                    <!-- Botão discreto para abrir o modal e ler as observações -->
+                                    <!-- Botão para abrir o histórico -->
                                     <button 
                                         v-if="item.ultimoContato" 
                                         type="button"
@@ -598,7 +602,7 @@
                     </div>
                 </div>
 
-                <!-- Campo para textos longos -->
+                <!-- Nova Observação -->
                 <FormGroup label="Nova Observação de Contato (Opcional)" id="obs-contato">
                     <textarea 
                         id="obs-contato"
@@ -623,12 +627,17 @@
                             class="p-3 rounded-md bg-muted border border-border text-xs space-y-1"
                         >
                             <div class="flex items-center justify-between text-muted-foreground font-semibold border-b border-border pb-1">
-                                <span>Contato realizado</span>
+                                <div class="">
+                                    <span>Contato realizado</span>
+                                    <span v-if="reg.usuario_nome" class="text-[11px] text-muted-foreground"> - {{ formatarNome(reg.usuario_nome) }}</span>
+                                </div>
                                 <span>{{ formatarDataBR(reg.data_contato) }}</span>
                             </div>
-                            <p class="text-foreground whitespace-pre-wrap break-words leading-relaxed pt-0.5">
-                                {{ reg.observacao || 'Sem observações registradas.' }}
-                            </p>
+                            <div class="pt-0.5 space-y-0.5">
+                                <p class="text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                                    {{ reg.observacao || 'Sem observações registradas.' }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -648,7 +657,7 @@
         <ModalConcluirAluno 
             v-model="modalConcluirAberto" 
             :matricula="matriculaParaConcluir" 
-            @concluido="buscarDados(true)" 
+            @concluido="carregarDadosGlobais(true)" 
         />
     </div>
 </template>

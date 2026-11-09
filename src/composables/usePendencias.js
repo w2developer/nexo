@@ -21,7 +21,7 @@ export function usePendencias() {
                     aluno(*),
                     curso(*),
                     registro_presenca(data_presenca),
-                    registro_contato(id, data_contato, observacao, criado_em)
+                    registro_contato(id, data_contato, observacao, usuario_nome, criado_em)
                 `)
                 .in('situacao', ['cursando', 'concluido']);
 
