@@ -2,9 +2,9 @@
     import { ref, computed, onMounted } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { ArrowLeft, Save, BookOpen, CheckCircle2, Clock } from '@lucide/vue';
+    import { ArrowLeft, Save, PlusCircle } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
-    import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
+    import { formatarNome } from '@/utils/formatters';
     import { getHojeString } from '@/utils/dateHelpers';
 
     import Button from '@/components/ui/Button.vue';
@@ -34,15 +34,16 @@
         curso_id: '',
         data_inicio: getHojeString(),
         data_fim: '',
+        ultima_presenca: '', // Novo campo opcional para presença retroativa
         ead: false
     });
 
-    // Verifica se o aluno já possui algum curso em andamento ('cursando')
+    // Verifica se o aluno já possui algum curso ativo ('cursando' ou 'aguardando')
     const possuiCursoEmAndamento = computed(() => {
-        return (aluno.value?.matricula || []).some(m => m.situacao === 'cursando');
+        return (aluno.value?.matricula || []).some(m => m.situacao === 'cursando' || m.situacao === 'aguardando');
     });
 
-    // Filtra cursos ainda não vinculados ao aluno
+    // Filtra cursos que o aluno ainda não possui
     const cursosDisponiveis = computed(() => {
         const cursosMatriculadosIds = new Set(
             (aluno.value?.matricula || []).map(m => m.curso_id)
@@ -56,7 +57,7 @@
             }));
     });
 
-    // Carrega aluno e cursos
+    // Carrega aluno e cursos disponíveis
     const carregarDados = async () => {
         carregando.value = true;
         try {
@@ -92,16 +93,15 @@
         }
     };
 
-    // Cria matrícula ('aguardando' se já tiver curso ativo, senão 'cursando') e redireciona
-    const salvarMatricula = async () => {
+    // Função central que executa a gravação no banco de dados
+    const executarGravacao = async () => {
         if (!form.value.curso_id) {
             toast.error("Atenção", "Selecione um curso para a matrícula.");
-            return;
+            return null;
         }
-
         if (!form.value.data_inicio) {
             toast.error("Atenção", "Informe a data de início.");
-            return;
+            return null;
         }
 
         salvando.value = true;
@@ -126,35 +126,69 @@
 
             if (error) throw error;
 
-            const msgToast = situacaoInicial === 'aguardando'
-                ? "Matrícula registrada como Aguardando! Defina agora os horários."
-                : "Matrícula criada! Defina agora os horários.";
+            // Se o usuário preencheu a última presença, grava diretamente
+            if (form.value.ultima_presenca) {
+                const { error: errPresenca } = await supabase
+                    .from('registro_presenca')
+                    .insert([{
+                        matricula_id: novaMatricula.id,
+                        data_presenca: form.value.ultima_presenca
+                    }]);
+                
+                if (errPresenca) console.error("Erro ao salvar presença:", errPresenca);
+            }
 
-            toast.success("Sucesso", msgToast);
-            router.replace(`/${tipoUsuario.value}/horarios/${novaMatricula.id}`);
+            return { novaMatricula, situacaoInicial };
         } catch (err) {
             console.error("Erro ao criar matrícula:", err);
             toast.error("Erro", "Não foi possível criar a matrícula.");
+            return null;
         } finally {
             salvando.value = false;
         }
     };
 
-    // Recupera o tipo de usuário da sessão
+    // Fluxo 1 (Padrão): Salva a matrícula atual e vai direto para a tela de horários dela
+    const salvarMatriculaEDefinirHorario = async () => {
+        const resultado = await executarGravacao();
+        if (resultado) {
+            const msgToast = resultado.situacaoInicial === 'aguardando'
+                ? "Matrícula registrada como Aguardando! Defina agora os horários."
+                : "Matrícula criada! Defina agora os horários.";
+
+            toast.success("Sucesso", msgToast);
+            router.replace(`/${tipoUsuario.value}/horarios/${resultado.novaMatricula.id}`);
+        }
+    };
+
+    // Fluxo 2 (Opcional): Salva a matrícula atual, limpa o formulário e continua na tela para adicionar outra
+    const salvarMatriculaEContinuar = async () => {
+        const resultado = await executarGravacao();
+        if (resultado) {
+            toast.success("Salvo!", `Curso '${cursosDisponiveis.value.find(c => c.value === Number(form.value.curso_id))?.label}' adicionado com sucesso.`);
+            
+            // Limpa o formulário para o próximo curso
+            form.value.curso_id = '';
+            form.value.data_fim = '';
+            form.value.ultima_presenca = '';
+            
+            // Recarrega os dados para atualizar a lista de "cursos já vinculados" e o status de "Aguardando"
+            await carregarDados();
+        }
+    };
+
     onMounted(() => {
         const sessionUsuario = sessionStorage.getItem('tipo_usuario');
-        
         if (sessionUsuario !== null) {
             tipoUsuario.value = sessionUsuario;
         }
+        carregarDados();
     });
-
-    onMounted(carregarDados);
 </script>
 
 <template>
     <div class="space-y-6">
-        <!-- Cabeçalho do Aluno -->
+        <!-- Cabeçalho do Aluno e Botões de Ação -->
         <Card>
             <CardContent class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -178,20 +212,34 @@
                     <div v-else class="text-sm text-muted-foreground">Carregando aluno...</div>
                 </div>
 
-                <!-- Ações -->
-                <div class="flex items-center justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-border shrink-0">
+                <!-- Botões de Ação -->
+                <div class="flex flex-wrap items-center justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-border shrink-0">
                     <Button variant="ghost" size="sm" @click="router.back()" :disabled="salvando">
                         Cancelar
                     </Button>
 
+                    <!-- Botão Secundário: Salvar e Adicionar Outro -->
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        class="bg-background text-foreground hover:bg-muted"
+                        @click="salvarMatriculaEContinuar" 
+                        :disabled="salvando || carregando || cursosDisponiveis.length === 0"
+                        title="Salva este curso e permite adicionar outro na mesma hora"
+                    >
+                        <PlusCircle class="w-4 h-4 sm:mr-1.5" />
+                        <span class="hidden sm:inline">Salvar e Adicionar Outro</span>
+                    </Button>
+
+                    <!-- Botão Principal: Salvar e Definir Horários -->
                     <Button 
                         variant="default" 
                         size="sm" 
-                        @click="salvarMatricula" 
+                        @click="salvarMatriculaEDefinirHorario" 
                         :disabled="salvando || carregando || cursosDisponiveis.length === 0"
                     >
                         <Save class="w-4 h-4 mr-1.5" />
-                        {{ salvando ? 'Criando...' : 'Criar e Definir Horários' }}
+                        {{ salvando ? 'Criando...' : 'Salvar e Ir para Horários' }}
                     </Button>
                 </div>
             </CardContent>
@@ -215,11 +263,12 @@
                         class="flex items-center gap-1.5 bg-muted/50 border border-border px-2.5 py-1 rounded-md text-xs"
                     >
                         <span class="font-medium text-foreground">{{ mat.curso?.nome }}</span>
+                        <Badge variant="outline" class="text-[9px] px-1 py-0 ml-1 leading-tight h-auto">{{ mat.situacao }}</Badge>
                     </div>
                 </CardContent>
             </Card>
 
-            <!-- Formulário 2x2 -->
+            <!-- Formulário -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h3 class="font-bold text-base text-foreground">Dados da Nova Matrícula</h3>
@@ -228,9 +277,9 @@
                     <Badge
                         v-if="possuiCursoEmAndamento"
                         variant="secondary"
-                        class=""
+                        class="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
                     >
-                        Status: Aguardando
+                        Status deste novo curso: Aguardando
                     </Badge>
                 </CardHeader>
 
@@ -239,8 +288,8 @@
                         Este aluno já possui matrícula registrada em todos os cursos cadastrados no sistema.
                     </div>
 
-                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormGroup label="Curso *" id="novo-curso">
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormGroup label="Curso *" id="novo-curso" class="sm:col-span-2 lg:col-span-1">
                             <Select 
                                 v-model="form.curso_id" 
                                 :options="cursosDisponiveis" 
@@ -257,12 +306,10 @@
                                 >
                                     Presencial
                                 </span>
-
                                 <Switch 
                                     id="switch-novo-ead"
                                     v-model="form.ead" 
                                 />
-
                                 <span 
                                     class="text-sm cursor-pointer select-none transition-colors"
                                     :class="form.ead ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'"
@@ -271,6 +318,12 @@
                                     EAD
                                 </span>
                             </div>
+                        </FormGroup>
+
+                        <!-- Novo Campo: Última Presença (Opcional) -->
+                        <FormGroup label="Última Presença (Opcional)" id="ultima-presenca">
+                            <Input v-model="form.ultima_presenca" type="date" />
+                            <p class="text-[10px] text-muted-foreground mt-1 leading-tight">Preencha caso o aluno já tenha tido aulas retroativas deste curso.</p>
                         </FormGroup>
 
                         <FormGroup label="Data de Início *" id="novo-inicio">
