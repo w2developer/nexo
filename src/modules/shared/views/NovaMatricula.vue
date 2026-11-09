@@ -169,12 +169,9 @@
                                 <h2 class="font-bold text-base sm:text-lg text-foreground leading-tight truncate">
                                     {{ formatarNome(aluno.nome) }}
                                 </h2>
-                                <Badge :variant="aluno.ativo ? 'success' : 'secondary'" class="text-[10px] px-2 py-0 shrink-0">
-                                    {{ aluno.ativo ? 'Ativo' : 'Inativo' }}
-                                </Badge>
                             </div>
                             <p class="text-xs text-muted-foreground truncate">
-                                Nova Matrícula • Código: {{ aluno.codigo }}
+                                Nova Matrícula
                             </p>
                         </div>
                     </template>
@@ -209,7 +206,6 @@
             <Card v-if="aluno.matricula && aluno.matricula.length > 0">
                 <CardContent class="p-4 flex flex-wrap items-center gap-2">
                     <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mr-2">
-                        <CheckCircle2 class="w-4 h-4 text-muted-foreground" />
                         Cursos já vinculados:
                     </span>
 
@@ -219,13 +215,6 @@
                         class="flex items-center gap-1.5 bg-muted/50 border border-border px-2.5 py-1 rounded-md text-xs"
                     >
                         <span class="font-medium text-foreground">{{ mat.curso?.nome }}</span>
-                        <Badge 
-                            :variant="getBadgeVariantMatricula(mat.situacao)"
-                            class="text-[9px] px-1.5 py-0 transition-colors"
-                            :class="mat.situacao === 'cursando' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : ''"
-                        >
-                            {{ capitalizar(mat.situacao) }}
-                        </Badge>
                     </div>
                 </CardContent>
             </Card>
@@ -239,10 +228,9 @@
                     <Badge
                         v-if="possuiCursoEmAndamento"
                         variant="secondary"
-                        class="w-fit flex items-center gap-1.5 bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 text-[11px]"
+                        class=""
                     >
-                        <Clock class="w-3 h-3" />
-                        Entrará como Aguardando (aluno já possui curso em andamento)
+                        Status: Aguardando
                     </Badge>
                 </CardHeader>
 
