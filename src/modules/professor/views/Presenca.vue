@@ -2,12 +2,16 @@
     import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
     import { useRouter } from 'vue-router';
-    import { Menu, UserPen, ClipboardClock, SquareCheck, Trash2 } from '@lucide/vue';
+    import { Menu, UserPen, ClipboardClock, SquareCheck, Trash2, CopyPlus } from '@lucide/vue';
 
     const router = useRouter();
 
     const irParaDashboard = () => {
         router.push('/professor/dashboard');
+    };
+
+    const irParaNovaMatricula = (item) => {
+        router.push(`/professor/nova-matricula/${item.aluno_id}`);
     };
 
     const irParaEditarAluno = (item) => {
@@ -340,6 +344,13 @@
                                                     >
                                                         <UserPen class="w-4 h-4" />
                                                         Editar Aluno
+                                                    </button>
+                                                    <button
+                                                        @click="irParaNovaMatricula(item)"
+                                                        class="w-full flex items-center text-left px-4 py-2 gap-2 text-foreground hover:bg-muted rounded transition-colors text-sm cursor-pointer"
+                                                    >
+                                                        <CopyPlus class="w-4 h-4" />
+                                                        Nova Matrícula
                                                     </button>
                                                     <button
                                                         @click="$router.push(`/professor/horarios/${item.id}`)"

@@ -2,7 +2,7 @@
     import { ref, onMounted, watch } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { ArrowLeft, Save, Calendar, BookOpen, Clock, ChevronRight, History } from '@lucide/vue';
+    import { ArrowLeft, Save, Calendar, BookOpen, Clock, ChevronRight, History, CopyPlus } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
     import { formatarDataBR } from '@/utils/dateHelpers';
@@ -28,6 +28,10 @@
     const cursosOpcoes = ref([]);
     const matriculaExpandida = ref(null);
     const tipoUsuario = ref(null);
+
+    const irParaNovaMatricula = (aluno) => {
+        router.push(`/${tipoUsuario.value}/nova-matricula/${aluno}`);
+    };
 
     // Dados do aluno
     const formAluno = ref({
@@ -390,9 +394,13 @@
                             Matrículas Vinculadas ({{ matriculas.length }})
                         </h3>
                     </div>
-                    <span class="text-xs text-muted-foreground hidden sm:inline">
-                        Clique em um curso para expandir e editar
-                    </span>
+                    <Button
+                        @click="irParaNovaMatricula(alunoId)"
+                        variant="sucess" size="sm"
+                        class="flex gap-2"
+                    >
+                    <CopyPlus class="w-4 h-4" /> Nova Matrícula
+                    </Button>
                 </CardHeader>
 
                 <div v-if="matriculas.length === 0" class="p-8 text-center text-muted-foreground">

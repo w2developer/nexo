@@ -1,7 +1,7 @@
 <script setup>
     import { ref, computed, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Search, ChevronRight, Menu, UserPen, UserX, UserCheck, BookOpen, Trash2 } from '@lucide/vue';
+    import { Search, ChevronRight, Menu, UserPen, UserX, UserCheck, BookOpen, Trash2, CopyPlus } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome } from '@/utils/formatters';
     import { useRouter } from 'vue-router';
@@ -229,7 +229,7 @@
                                             @click="irParaNovaMatricula(aluno)"
                                             class="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                                         >
-                                            <BookOpen class="w-4 h-4" /> Nova Matrícula
+                                            <CopyPlus class="w-4 h-4" /> Nova Matrícula
                                         </button>
                                         <hr class="my-1 border-border" />
                                         <button
