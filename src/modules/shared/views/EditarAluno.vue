@@ -2,10 +2,9 @@
     import { ref, onMounted, watch } from 'vue';
     import { useRoute, useRouter } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { ArrowLeft, Save, Calendar, BookOpen, Clock, ChevronRight, History, CopyPlus } from '@lucide/vue';
+    import { ArrowLeft, Save, Calendar, Clock, ChevronRight, History, CopyPlus, Trash, AlertTriangle, Loader2 } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarNome, capitalizar, getBadgeVariantMatricula } from '@/utils/formatters';
-    import { formatarDataBR } from '@/utils/dateHelpers';
 
     import Button from '@/components/ui/Button.vue';
     import Card from '@/components/ui/Card.vue';
@@ -17,6 +16,7 @@
     import Switch from '@/components/ui/Switch.vue';
     import Badge from '@/components/ui/Badge.vue';
     import Avatar from '@/components/ui/Avatar.vue';
+    import Modal from '@/components/ui/Modal.vue'; // <-- Necessário para o modal de exclusão
 
     const route = useRoute();
     const router = useRouter();
@@ -28,6 +28,12 @@
     const cursosOpcoes = ref([]);
     const matriculaExpandida = ref(null);
     const tipoUsuario = ref(null);
+
+    // Estados para Exclusão de Matrícula (Regra Crítica)
+    const modalExcluirAberto = ref(false);
+    const matriculaParaExcluir = ref(null);
+    const textoConfirmacaoExclusao = ref('');
+    const excluindo = ref(false);
 
     const irParaNovaMatricula = (aluno) => {
         router.push(`/${tipoUsuario.value}/nova-matricula/${aluno}`);
@@ -291,6 +297,52 @@
         }
     };
 
+    // ========================================================
+    // LÓGICA DE EXCLUSÃO DE MATRÍCULA (AÇÃO CRÍTICA)
+    // ========================================================
+    
+    // Abre o modal seguro e define qual matrícula será excluída
+    const abrirModalExcluirMatricula = (mat) => {
+        matriculaParaExcluir.value = mat;
+        textoConfirmacaoExclusao.value = '';
+        modalExcluirAberto.value = true;
+    };
+
+    // Valida se o usuário digitou a palavra correta e exclui
+    const confirmarExclusaoMatricula = async () => {
+        const cursoNome = getNomeCurso(matriculaParaExcluir.value.curso_id);
+        const palavraChaveEsperada = cursoNome.toUpperCase();
+
+        if (textoConfirmacaoExclusao.value.toUpperCase() !== palavraChaveEsperada) {
+            toast.error("Verificação Falhou", `Digite "${palavraChaveEsperada}" para confirmar.`);
+            return;
+        }
+
+        excluindo.value = true;
+        try {
+            // Exclui a matrícula e o Supabase cuida do resto (on delete cascade)
+            const { error } = await supabase
+                .from('matricula')
+                .delete()
+                .eq('id', matriculaParaExcluir.value.id);
+
+            if (error) throw error;
+
+            toast.success("Excluída", `A matrícula em ${cursoNome} foi removida com sucesso.`);
+            
+            // Remove a matrícula da tela sem precisar recarregar o banco
+            matriculas.value = matriculas.value.filter(m => m.id !== matriculaParaExcluir.value.id);
+            modalExcluirAberto.value = false;
+            
+        } catch (err) {
+            console.error("Erro ao excluir matrícula:", err);
+            toast.error("Erro", "Falha ao tentar excluir a matrícula.");
+        } finally {
+            excluindo.value = false;
+        }
+    };
+
+
     onMounted(() => {
         const sessionUsuario = sessionStorage.getItem('tipo_usuario');
         if (sessionUsuario !== null) {
@@ -396,7 +448,7 @@
                     </div>
                     <Button
                         @click="irParaNovaMatricula(alunoId)"
-                        variant="sucess" size="sm"
+                        variant="outline" size="sm"
                         class="flex gap-2"
                     >
                     <CopyPlus class="w-4 h-4" /> Nova Matrícula
@@ -473,6 +525,15 @@
                                 >
                                     <Calendar class="w-3.5 h-3.5 sm:mr-1.5" />
                                     <span class="hidden sm:inline">Horários</span>
+                                </Button>
+                                
+                                <!-- Botão de Excluir Matrícula (Com chamada Segura) -->
+                                <Button 
+                                    variant="destructive" 
+                                    size="sm"
+                                    @click="abrirModalExcluirMatricula(mat)"
+                                >
+                                    <Trash size="14"/>
                                 </Button>
                             </div>
                         </div>
@@ -551,5 +612,65 @@
             <br>
             <br>
         </template>
+        
+        <!-- ========================================== -->
+        <!-- MODAL DE EXCLUSÃO CRÍTICA DE MATRÍCULA -->
+        <!-- ========================================== -->
+        <Modal 
+            v-model="modalExcluirAberto" 
+            title="Exclusão de Matrícula (AÇÃO CRÍTICA)"
+            size="sm"
+        >
+            <div class="space-y-4" v-if="matriculaParaExcluir">
+                <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg p-3 sm:p-4 flex items-start gap-3">
+                    <AlertTriangle class="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div class="space-y-1">
+                        <p class="text-sm font-semibold text-rose-700 dark:text-rose-400">
+                            Exclusão Permanente
+                        </p>
+                        <p class="text-xs text-rose-600/90 dark:text-rose-400/80 leading-relaxed">
+                            Ao excluir a matrícula no curso <strong>{{ getNomeCurso(matriculaParaExcluir.curso_id) }}</strong>, você também excluirá permanentemente todos os registros de presença, horários e acompanhamentos atrelados a ela.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-foreground">
+                        Para confirmar, digite o nome do curso em letras MAIÚSCULAS:
+                        <br/>
+                        <br/>
+                        <span class="font-bold text-foreground select-all">
+                            {{ getNomeCurso(matriculaParaExcluir.curso_id).toUpperCase() }}
+                        </span>
+                        <br>
+                        <br>
+                    </label>
+                    
+                    <Input 
+                        v-model="textoConfirmacaoExclusao"
+                        placeholder="Digite o nome do curso aqui..."
+                        :class="{'border-rose-500 ring-rose-500': textoConfirmacaoExclusao.length > 0 && textoConfirmacaoExclusao.toUpperCase() !== getNomeCurso(matriculaParaExcluir.curso_id).toUpperCase()}"
+                        @keyup.enter="confirmarExclusaoMatricula"
+                    />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button variant="ghost" @click="modalExcluirAberto = false" :disabled="excluindo">
+                    Cancelar
+                </Button>
+                
+                <Button 
+                    variant="destructive" 
+                    @click="confirmarExclusaoMatricula" 
+                    :disabled="excluindo || !matriculaParaExcluir || textoConfirmacaoExclusao.toUpperCase() !== getNomeCurso(matriculaParaExcluir.curso_id).toUpperCase()"
+                >
+                    <Loader2 v-if="excluindo" class="w-4 h-4 mr-2 animate-spin" />
+                    <Trash v-else class="w-4 h-4 mr-2" />
+                    Sim, Excluir Matrícula
+                </Button>
+            </template>
+        </Modal>
+        
     </div>
 </template>
