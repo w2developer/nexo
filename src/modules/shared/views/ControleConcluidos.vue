@@ -167,7 +167,7 @@
                 <!-- Cabeçalho Desktop -->
                 <div class="hidden md:flex items-center gap-4 p-4 border-b border-border bg-muted/50 text-sm font-semibold text-muted-foreground">
                     <div class="flex-1">Identificação do Aluno</div>
-                    <div class="w-48">Curso</div>
+                    <!-- <div class="w-48">Curso</div> -->
                     <div class="w-32 text-center">Conclusão</div>
                     <div class="w-40 text-center">Certificado</div>
                     <div class="w-16 text-center">Ações</div>
@@ -193,17 +193,21 @@
                                     {{ formatarNome(aluno.nome) }}
                                 </span>
                                 <!-- Resumo de Curso e Data no Mobile -->
+                                <span class="hidden md:block text-xs text-muted-foreground truncate mt-0.5">
+                                    {{ mat.curso?.nome || 'Curso Desconhecido' }}
+                                </span>
+
                                 <span class="md:hidden text-xs text-muted-foreground truncate mt-0.5">
-                                    {{ mat.curso?.nome || 'Curso Desconhecido' }} • {{ formatarDataBR(mat.data_conclusao) }}
+                                    {{ mat.curso?.nome || 'Curso Desconhecido' }} - {{ formatarDataBR(mat.data_conclusao) }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- Dados e Ações (Direita) -->
                         <div class="flex items-center gap-2 md:gap-4 shrink-0">
-                            <div class="hidden md:block w-48 text-sm font-medium text-foreground truncate">
+                            <!-- <div class="hidden md:block w-48 text-sm font-medium text-foreground truncate">
                                 {{ mat.curso?.nome || 'Curso Desconhecido' }}
-                            </div>
+                            </div> -->
 
                             <div class="hidden md:block w-32 text-center text-sm text-muted-foreground">
                                 {{ formatarDataBR(mat.data_conclusao) }}
