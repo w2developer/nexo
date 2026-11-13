@@ -18,9 +18,13 @@
     import Badge from '@/components/ui/Badge.vue';
     import Avatar from '@/components/ui/Avatar.vue';
 
+    import ModalCadastrarCurso from '../components/ModalCadastrarCurso.vue';
+
     const route = useRoute();
     const router = useRouter();
     const alunoId = route.params.id;
+
+    const modalAberto = ref(false);
 
     // Estados
     const carregando = ref(true);
@@ -34,16 +38,14 @@
         curso_id: '',
         data_inicio: getHojeString(),
         data_fim: '',
-        ultima_presenca: '', // Novo campo opcional para presença retroativa
+        ultima_presenca: '',
         ead: false
     });
 
-    // Verifica se o aluno já possui algum curso ativo ('cursando' ou 'aguardando')
     const possuiCursoEmAndamento = computed(() => {
         return (aluno.value?.matricula || []).some(m => m.situacao === 'cursando' || m.situacao === 'aguardando');
     });
 
-    // Filtra cursos que o aluno ainda não possui
     const cursosDisponiveis = computed(() => {
         const cursosMatriculadosIds = new Set(
             (aluno.value?.matricula || []).map(m => m.curso_id)
@@ -57,7 +59,6 @@
             }));
     });
 
-    // Carrega aluno e cursos disponíveis
     const carregarDados = async () => {
         carregando.value = true;
         try {
@@ -93,7 +94,18 @@
         }
     };
 
-    // Função central que executa a gravação no banco de dados
+    // 👇 ESTA É A FUNÇÃO QUE ESCUTA O MODAL E LIMPA O FANTASMA 👇
+    const sincronizarCursosDoModal = async () => {
+        await carregarDados();
+        
+        if (form.value.curso_id) {
+            const cursoAindaExiste = todosCursos.value.some(c => c.id === Number(form.value.curso_id));
+            if (!cursoAindaExiste) {
+                form.value.curso_id = '';
+            }
+        }
+    };
+
     const executarGravacao = async () => {
         if (!form.value.curso_id) {
             toast.error("Atenção", "Selecione um curso para a matrícula.");
@@ -126,7 +138,6 @@
 
             if (error) throw error;
 
-            // Se o usuário preencheu a última presença, grava diretamente
             if (form.value.ultima_presenca) {
                 const { error: errPresenca } = await supabase
                     .from('registro_presenca')
@@ -148,7 +159,6 @@
         }
     };
 
-    // Fluxo 1 (Padrão): Salva a matrícula atual e vai direto para a tela de horários dela
     const salvarMatriculaEDefinirHorario = async () => {
         const resultado = await executarGravacao();
         if (resultado) {
@@ -161,18 +171,15 @@
         }
     };
 
-    // Fluxo 2 (Opcional): Salva a matrícula atual, limpa o formulário e continua na tela para adicionar outra
     const salvarMatriculaEContinuar = async () => {
         const resultado = await executarGravacao();
         if (resultado) {
             toast.success("Salvo!", `Curso '${cursosDisponiveis.value.find(c => c.value === Number(form.value.curso_id))?.label}' adicionado com sucesso.`);
             
-            // Limpa o formulário para o próximo curso
             form.value.curso_id = '';
             form.value.data_fim = '';
             form.value.ultima_presenca = '';
             
-            // Recarrega os dados para atualizar a lista de "cursos já vinculados" e o status de "Aguardando"
             await carregarDados();
         }
     };
@@ -188,7 +195,6 @@
 
 <template>
     <div class="space-y-6">
-        <!-- Cabeçalho do Aluno e Botões de Ação -->
         <Card>
             <CardContent class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -212,26 +218,22 @@
                     <div v-else class="text-sm text-muted-foreground">Carregando aluno...</div>
                 </div>
 
-                <!-- Botões de Ação -->
                 <div class="flex flex-wrap items-center justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-border shrink-0">
                     <Button variant="ghost" size="sm" @click="router.back()" :disabled="salvando">
                         Cancelar
                     </Button>
 
-                    <!-- Botão Secundário: Salvar e Adicionar Outro -->
                     <Button 
                         variant="outline" 
                         size="sm" 
                         class="bg-background text-foreground hover:bg-muted"
                         @click="salvarMatriculaEContinuar" 
                         :disabled="salvando || carregando || cursosDisponiveis.length === 0"
-                        title="Salva este curso e permite adicionar outro na mesma hora"
                     >
                         <PlusCircle class="w-4 h-4 sm:mr-1.5" />
                         <span class="hidden sm:inline">Salvar e Adicionar Outro</span>
                     </Button>
 
-                    <!-- Botão Principal: Salvar e Definir Horários -->
                     <Button 
                         variant="default" 
                         size="sm" 
@@ -250,7 +252,6 @@
         </div>
 
         <template v-else-if="aluno">
-            <!-- Cursos já vinculados -->
             <Card v-if="aluno.matricula && aluno.matricula.length > 0">
                 <CardContent class="p-4 flex flex-wrap items-center gap-2">
                     <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mr-2">
@@ -268,12 +269,10 @@
                 </CardContent>
             </Card>
 
-            <!-- Formulário -->
             <Card>
                 <CardHeader class="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h3 class="font-bold text-base text-foreground">Dados da Nova Matrícula</h3>
 
-                    <!-- Indicador automático de status inicial -->
                     <Badge
                         v-if="possuiCursoEmAndamento"
                         variant="secondary"
@@ -290,11 +289,19 @@
 
                     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <FormGroup label="Curso *" id="novo-curso" class="sm:col-span-2 lg:col-span-1">
-                            <Select 
-                                v-model="form.curso_id" 
-                                :options="cursosDisponiveis" 
-                                placeholder="Selecione o curso..." 
-                            />
+                            <div class="flex flex-row gap-2 items-center">
+                                <Select 
+                                    v-model="form.curso_id" 
+                                    :options="cursosDisponiveis" 
+                                    placeholder="Selecione o curso..." 
+                                />
+                                <Button 
+                                    @click="modalAberto = true"
+                                    variant="outline"
+                                    class="text-neutral-600 text-md font-bold shrink-0">
+                                    +
+                                </Button>
+                            </div>
                         </FormGroup>
 
                         <FormGroup label="Modalidade de Ensino" id="novo-ead">
@@ -320,7 +327,6 @@
                             </div>
                         </FormGroup>
 
-                        <!-- Novo Campo: Última Presença (Opcional) -->
                         <FormGroup label="Última Presença (Opcional)" id="ultima-presenca">
                             <Input v-model="form.ultima_presenca" type="date" />
                             <p class="text-[10px] text-muted-foreground mt-1 leading-tight">Preencha caso o aluno já tenha tido aulas retroativas deste curso.</p>
@@ -338,4 +344,10 @@
             </Card>
         </template>
     </div>
+
+    <!-- 👇 O LISTENER "@atualizado" AQUI CONECTA OS DOIS FICHEIROS 👇 -->
+    <ModalCadastrarCurso
+        v-model="modalAberto"
+        @atualizado="sincronizarCursosDoModal"
+    />
 </template>
