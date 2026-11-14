@@ -12,6 +12,7 @@ const badgeVariants = cva(
                 destructive: 'border-transparent bg-red-500 text-white hover:bg-red-500/80',
                 outline: 'text-foreground border-border',
                 success: 'border-transparent bg-green-500/10 text-green-600',
+                warning: 'border-transparent bg-amber-100 text-amber-800 hover:bg-yellow-200/80', // Fundo pastel
                 ghost: 'border-transparent bg-transparent text-foreground'
             },
         },

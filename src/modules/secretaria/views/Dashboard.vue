@@ -359,10 +359,10 @@
 
                                     <Badge 
                                         v-else-if="item.statusContato === 'rechamada'" 
-                                        variant="default" 
-                                        class="bg-violet-600 text-white text-[10px]"
+                                        variant="warning" 
+                                        class="text-[10px]"
                                     >
-                                        Sem retorno! Cobrar de novo
+                                        Não retornou
                                     </Badge>
 
                                     <Badge 
