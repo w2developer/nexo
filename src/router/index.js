@@ -1,12 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Rotas de Alunos
 import alunoRoutes from '@/modules/aluno/routers/alunoRoutes.js'
 import professorRoutes from '@/modules/professor/routers/professorRoutes.js'
 import secretariaRoutes from '@/modules/secretaria/routers/secretariaRoutes.js'
 
 const routes = [
-    // Redireciona a raiz para o painel correto ou login
     {
         path: '/',
         redirect: () => {
@@ -27,14 +25,14 @@ const routes = [
     },
     {
         path: '/test',
-        component: () => import('@/views/public/Test.vue')
+        component: () => import('@/views/Test.vue')
     },
 
     // Rotas de Autenticação
-    { path: '/login', component: () => import('../views/public/Login.vue') },
+    { path: '/login', component: () => import('../views/Login.vue') },
 
     // Rota Temporária para Testes
-    { path: '/seed', component: () => import('../views/public/SeedData.vue') },
+    { path: '/seed', component: () => import('../views/SeedData.vue') },
 
     // Rotas Aluno
     ...alunoRoutes,
