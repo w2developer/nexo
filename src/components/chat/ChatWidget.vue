@@ -1,4 +1,5 @@
 <script setup>
+    import { onMounted, onUnmounted } from 'vue';
     import { MessageCircle, X } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import ChatListaContatos from './ChatListaContatos.vue';
@@ -6,20 +7,43 @@
     import ChatMensagens from './ChatMensagens.vue';
     import ChatBarraEnvio from './ChatBarraEnvio.vue';
     import ChatModalPermissao from './ChatModalPermissao.vue';
+    import ChatEstadoVazio from './ChatEstadoVazio.vue';
 
     const {
         colegaAtivo,
         widgetAberto,
+        chatExpandido,
         temMensagemNaoLida,
-        toggleWidget
+        toggleWidget,
+        fecharChat
     } = useChat();
+
+    const handleKeydown = (e) => {
+        if (e.key === 'Escape' && widgetAberto.value) {
+            if (colegaAtivo.value) {
+                fecharChat(); 
+            } else {
+                toggleWidget(); 
+            }
+        }
+    };
+
+    onMounted(() => {
+        if (typeof window !== 'undefined') {
+            window.addEventListener('keydown', handleKeydown);
+        }
+    });
+
+    onUnmounted(() => {
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('keydown', handleKeydown);
+        }
+    });
 </script>
 
 <template>
-    <!-- Modal da W2 UI Kit para permissão de notificações do navegador -->
     <ChatModalPermissao />
 
-    <!-- Overlay de fundo -->
     <Transition name="fade">
         <div
             v-if="widgetAberto"
@@ -28,27 +52,57 @@
         ></div>
     </Transition>
 
-    <div class="fixed bottom-6 left-6 z-[9999] flex flex-col items-start font-sans">
-        <!-- Janela Principal do Widget -->
+    <div class="fixed bottom-6 left-6 z-[9999] flex flex-col items-start font-sans pointer-events-none">
+        
         <div
             v-if="widgetAberto"
-            class="mb-4 w-[360px] h-[550px] bg-slate-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 flex flex-col overflow-hidden"
+            class="mb-4 bg-slate-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 flex overflow-hidden transition-all duration-300 origin-bottom-left pointer-events-auto"
+            :class="[
+                chatExpandido
+                    ? 'w-[calc(100vw-48px)] md:max-w-[1024px] h-[calc(100vh-120px)] max-h-[750px] flex-row'
+                    : 'w-[360px] h-[550px] flex-col'
+            ]"
         >
-            <ChatListaContatos v-if="!colegaAtivo" />
+            <!-- MODO EXPANDIDO -->
+            <template v-if="chatExpandido">
+                <!-- Coluna Esquerda: Lista de Contatos -->
+                <div 
+                    class="border-r border-slate-200 shrink-0 h-full w-full md:w-[320px] lg:w-[340px] bg-white transition-all"
+                    :class="colegaAtivo ? 'hidden md:block' : 'block'"
+                >
+                    <ChatListaContatos />
+                </div>
 
+                <!-- Coluna Direita: Conversa ou Vazio -->
+                <div 
+                    class="flex-1 flex flex-col min-w-0 h-full bg-[#f8fafc]"
+                    :class="colegaAtivo ? 'flex' : 'hidden md:flex'"
+                >
+                    <ChatEstadoVazio v-if="!colegaAtivo" />
+                    
+                    <template v-else>
+                        <ChatCabecalho />
+                        <ChatMensagens />
+                        <ChatBarraEnvio />
+                    </template>
+                </div>
+            </template>
+
+            <!-- MODO MINIATURA -->
             <template v-else>
-                <ChatCabecalho />
-                <ChatMensagens />
-                <ChatBarraEnvio />
+                <ChatListaContatos v-if="!colegaAtivo" />
+                <template v-else>
+                    <ChatCabecalho />
+                    <ChatMensagens />
+                    <ChatBarraEnvio />
+                </template>
             </template>
         </div>
 
-        <!-- Botão Flutuante Principal (FAB) -->
         <button
             @click="toggleWidget"
-            class="relative w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center cursor-pointer"
+            class="relative w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center cursor-pointer pointer-events-auto"
         >
-            <!-- Tooltip de Nova Mensagem -->
             <div
                 v-if="temMensagemNaoLida && !widgetAberto"
                 class="absolute -top-10 left-0 bg-slate-800 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap flex items-center gap-2 pointer-events-none"

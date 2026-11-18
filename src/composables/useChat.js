@@ -2,12 +2,25 @@ import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
 import { useBrowserNotification } from '@/composables/useBrowserNotification';
 
+const STORAGE_KEY_EXPANDIDO = 'chat_widget_expandido';
+
+// Lê a preferência de exibição salva pelo usuário
+const lerPreferenciaExpandido = () => {
+    if (typeof window === 'undefined') return false;
+    try {
+        return localStorage.getItem(STORAGE_KEY_EXPANDIDO) === 'true';
+    } catch {
+        return false;
+    }
+};
+
 // Estado global compartilhado
 const colegas = ref([]);
 const mensagens = ref([]);
 const colegaAtivo = ref(null);
 const salaAtivaId = ref(null);
 const widgetAberto = ref(false);
+const chatExpandido = ref(lerPreferenciaExpandido());
 const currentUser = ref({ id: null, nome: null, tipo: null });
 const carregando = ref(false);
 const usuariosOnline = ref([]);
@@ -100,6 +113,15 @@ export function useChat() {
 
     // Abre ou cria sala direta com o colega
     const abrirChatCom = async (colega) => {
+        if (
+            colegaAtivo.value &&
+            String(colegaAtivo.value.id) === String(colega.id) &&
+            salaAtivaId.value
+        ) {
+            await marcarMensagensComoLidas();
+            return;
+        }
+
         carregando.value = true;
         colegaAtivo.value = colega;
         mensagens.value = [];
@@ -430,14 +452,29 @@ export function useChat() {
         }
     };
 
+    // Atualiza e persiste a preferência de modo expandido no localStorage
+    const definirChatExpandido = (valor) => {
+        chatExpandido.value = Boolean(valor);
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.setItem(STORAGE_KEY_EXPANDIDO, String(chatExpandido.value));
+        } catch (err) {
+            console.warn('Não foi possível salvar preferência do chat:', err);
+        }
+    };
+
+    const toggleExpandirChat = () => {
+        definirChatExpandido(!chatExpandido.value);
+    };
+
     const temMensagemNaoLida = computed(() => {
         return Object.values(naoLidasGlobais.value).some(qtd => qtd > 0);
     });
 
     return {
-        colegas, mensagens, colegaAtivo, widgetAberto, currentUser, carregando,
+        colegas, mensagens, colegaAtivo, widgetAberto, chatExpandido, currentUser, carregando,
         usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId, temMensagemNaoLida,
-        initChat, toggleWidget, abrirChatCom, fecharChat, enviarMensagem, excluirMensagem,
-        confirmarLike, sinalizarDigitacao, buscarAlunos
+        initChat, toggleWidget, toggleExpandirChat, definirChatExpandido, abrirChatCom,
+        fecharChat, enviarMensagem, excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
     };
 }

@@ -10,6 +10,7 @@
         colegaAtivo,
         currentUser,
         carregando,
+        chatExpandido,
         excluirMensagem,
         confirmarLike
     } = useChat();
@@ -59,7 +60,11 @@
             class="flex w-full group"
             :class="msg.remetente_id === currentUser.id ? 'justify-end' : 'justify-start'"
         >
-            <div class="flex items-center gap-2 max-w-[85%] min-w-0">
+            <!-- Ajuste dinâmico de largura máxima do balão -->
+            <div 
+                class="flex items-center gap-2 min-w-0"
+                :class="chatExpandido ? 'max-w-[70%] 2xl:max-w-[60%]' : 'max-w-[85%]'"
+            >
                 <div class="flex flex-col min-w-0 w-full" :class="msg.remetente_id === currentUser.id ? 'items-end' : 'items-start'">
                     <div class="flex items-center gap-2 max-w-full min-w-0">
                         <!-- Botão Excluir (Apenas remetente) -->
