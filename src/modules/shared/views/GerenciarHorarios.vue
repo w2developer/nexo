@@ -230,7 +230,7 @@
                 <!-- Barra de Ações e Contador -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between lg:justify-end gap-2.5 border-t lg:border-t-0 pt-3 lg:pt-0 border-border shrink-0">
                     <div class="flex items-center justify-between sm:justify-start gap-2">
-                        <Badge variant="secondary" class="px-3 py-1 text-xs flex items-center gap-1.5 shrink-0">
+                        <Badge variant="info" class="text-xs flex items-center gap-1.5 shrink-0">
                             <Clock class="w-3.5 h-3.5" />
                             {{ totalHorasAtivas }}h semanais
                         </Badge>
@@ -322,7 +322,7 @@
                             </span>
 
                             <Badge 
-                                :variant="contarHorasDia(dia.value) > 0 ? 'default' : 'secondary'" 
+                                :variant="contarHorasDia(dia.value) > 0 ? 'default' : 'outline'" 
                                 class="text-[11px] px-2 py-0"
                             >
                                 {{ contarHorasDia(dia.value) }}h

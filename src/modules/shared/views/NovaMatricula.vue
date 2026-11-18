@@ -264,7 +264,7 @@
                         class="flex items-center gap-1.5 bg-muted/50 border border-border px-2.5 py-1 rounded-md text-xs"
                     >
                         <span class="font-medium text-foreground">{{ mat.curso?.nome }}</span>
-                        <Badge variant="outline" class="text-[9px] px-1 py-0 ml-1 leading-tight h-auto">{{ mat.situacao }}</Badge>
+                        <Badge variant="info" class="text-[9px]">{{ mat.situacao }}</Badge>
                     </div>
                 </CardContent>
             </Card>
@@ -275,8 +275,7 @@
 
                     <Badge
                         v-if="possuiCursoEmAndamento"
-                        variant="secondary"
-                        class="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                        variant="info"
                     >
                         Status deste novo curso: Aguardando
                     </Badge>

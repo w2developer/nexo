@@ -367,8 +367,8 @@
 
                                     <Badge 
                                         v-else 
-                                        variant="secondary" 
-                                        class="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 text-[10px]"
+                                        variant="success"
+                                        class="text-[10px]"
                                     >
                                         Contatado
                                     </Badge>

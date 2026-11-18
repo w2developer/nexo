@@ -223,7 +223,7 @@
                 </div>
 
                 <div v-if="!carregando" class="flex items-center gap-2 shrink-0">
-                    <Badge variant="secondary" class="text-xs px-3 py-1">
+                    <Badge variant="info" class="text-xs">
                         Total: {{ presencas.length }} {{ presencas.length === 1 ? 'presença' : 'presenças' }}
                     </Badge>
                 </div>
@@ -292,7 +292,7 @@
                                         <span class="font-semibold text-sm sm:text-base text-slate-900">
                                             {{ formatarDataBR(item.data_presenca) }}
                                         </span>
-                                        <Badge v-if="index === 0" variant="success" class="text-[10px] px-2 py-0">
+                                        <Badge v-if="index === 0" variant="success" class="text-[10px]">
                                             Última
                                         </Badge>
                                     </div>

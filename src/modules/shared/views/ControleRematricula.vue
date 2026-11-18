@@ -134,24 +134,24 @@
         });
     });
 
-    // Estilo do Badge de status comercial
+    // Retorna a variante padronizada em vez de classes CSS soltas
     const badgeStatus = (status) => {
         const configs = {
             pendente: {
                 texto: 'Pendente',
-                classe: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                variant: 'warning'
             },
             em_negociacao: {
                 texto: 'Em Negociação',
-                classe: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30'
+                variant: 'accent'
             },
             rematriculado: {
                 texto: 'Rematriculado',
-                classe: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                variant: 'success'
             },
             nao_rematriculado: {
                 texto: 'Não Rematriculado',
-                classe: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                variant: 'destructive'
             }
         };
         return configs[status] || configs.pendente;
@@ -175,7 +175,7 @@
 
         carregarDados();
 
-        // 🎧 ESCUTANDO O MAESTRO (Em vez de abrir um canal isolado)
+        // 🎧 ESCUTANDO O MAESTRO
         document.addEventListener('db-update-rematricula', atualizarSilencioso);
         document.addEventListener('db-update-matricula', atualizarSilencioso);
         document.addEventListener('db-update-aluno', atualizarSilencioso);
@@ -383,20 +383,17 @@
 
                         <div class="flex flex-wrap items-center justify-between gap-2 pl-11">
                             <div class="flex flex-wrap items-center gap-1.5">
+                                <!-- Utilizando variant dinâmico -->
                                 <Badge
-                                    variant="secondary"
+                                    :variant="item.origem === 'reta_final' ? 'warning' : 'default'"
                                     class="text-[10px] px-2 py-0"
-                                    :class="item.origem === 'reta_final'
-                                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                                        : 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'"
                                 >
                                     {{ item.motivoQualificacao }}
                                 </Badge>
 
                                 <Badge
-                                    variant="secondary"
+                                    :variant="badgeStatus(item.status).variant"
                                     class="text-[10px] px-2 py-0"
-                                    :class="badgeStatus(item.status).classe"
                                 >
                                     {{ badgeStatus(item.status).texto }}
                                 </Badge>
@@ -445,12 +442,10 @@
 
                                 <!-- Critério -->
                                 <TableCell class="text-center">
+                                    <!-- Utilizando variant dinâmico -->
                                     <Badge
-                                        variant="ghost"
+                                        :variant="item.origem === 'reta_final' ? 'warning' : 'default'"
                                         class="text-[11px]"
-                                        :class="item.origem === 'reta_final'
-                                            ? 'text-amber-700 dark:text-amber-400'
-                                            : 'text-emerald-700 dark:text-blue-400'"
                                     >
                                         {{ item.motivoQualificacao }}
                                     </Badge>
@@ -458,10 +453,10 @@
 
                                 <!-- Status Comercial -->
                                 <TableCell class="text-center">
+                                    <!-- Utilizando variant dinâmico -->
                                     <Badge
-                                        variant="secondary"
+                                        :variant="badgeStatus(item.status).variant"
                                         class="text-[11px]"
-                                        :class="badgeStatus(item.status).classe"
                                     >
                                         {{ badgeStatus(item.status).texto }}
                                     </Badge>
