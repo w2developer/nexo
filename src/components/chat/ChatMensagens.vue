@@ -1,7 +1,7 @@
 <!-- src/components/chat/ChatMensagens.vue -->
 <script setup>
-    import { ref, watch, nextTick, onMounted } from 'vue';
-    import { Trash2, ThumbsUp, AtSign } from '@lucide/vue';
+    import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+    import { Trash2, ThumbsUp, AtSign, Copy, Check } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import {
         formatarHora,
@@ -22,6 +22,34 @@
     } = useChat();
 
     const containerMensagens = ref(null);
+    const chaveCopiada = ref(null);
+    let timeoutCopia = null;
+
+    // Retorna lista unificada de alunos mencionados (novo formato jsonb ou legado)
+    const obterAlunosMencionados = (msg) => {
+        if (Array.isArray(msg?.alunos_mencionados) && msg.alunos_mencionados.length > 0) {
+            return msg.alunos_mencionados;
+        }
+        if (msg?.aluno_mencionado) {
+            return [msg.aluno_mencionado];
+        }
+        return [];
+    };
+
+    // Copia o nome do aluno clicado para a área de transferência
+    const copiarAluno = async (msgId, aluno) => {
+        if (!aluno?.nome) return;
+        try {
+            await navigator.clipboard.writeText(aluno.nome);
+            chaveCopiada.value = `${msgId}-${aluno.id}`;
+            clearTimeout(timeoutCopia);
+            timeoutCopia = setTimeout(() => {
+                chaveCopiada.value = null;
+            }, 1500);
+        } catch (err) {
+            console.error('Erro ao copiar nome do aluno:', err);
+        }
+    };
 
     // Exibe divisor quando a mensagem iniciar um novo dia no histórico
     const exibirDivisorData = (index) => {
@@ -45,6 +73,10 @@
         if (!carregando.value) {
             rolarParaFinal();
         }
+    });
+
+    onUnmounted(() => {
+        clearTimeout(timeoutCopia);
     });
 
     watch(carregando, (estaCarregando) => {
@@ -104,18 +136,33 @@
                                     ? 'bg-violet-600 text-white rounded-2xl rounded-tr-sm'
                                     : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm'"
                             >
-                                <!-- Menção do Aluno -->
+                                <!-- Cards dos Alunos Mencionados (separados visualmente do texto) -->
                                 <div
-                                    v-if="msg.aluno_mencionado"
-                                    :title="`${msg.aluno_mencionado.nome} (${msg.aluno_mencionado.codigo})`"
-                                    class="flex items-center gap-1 text-[11px] font-semibold pb-1.5 mb-1.5 border-b min-w-0 max-w-full"
-                                    :class="msg.remetente_id === currentUser.id
-                                        ? 'border-violet-400/40 text-violet-100'
-                                        : 'border-slate-100 dark:border-border text-violet-600 dark:text-violet-400'"
+                                    v-if="obterAlunosMencionados(msg).length > 0"
+                                    class="flex flex-col gap-1.5 mb-2.5"
                                 >
-                                    <AtSign class="w-3.5 h-3.5 shrink-0" />
-                                    <span class="truncate">{{ msg.aluno_mencionado.nome }}</span>
-                                    <span class="shrink-0 opacity-85">({{ msg.aluno_mencionado.codigo }})</span>
+                                    <button
+                                        v-for="aluno in obterAlunosMencionados(msg)"
+                                        :key="aluno.id"
+                                        type="button"
+                                        @click="copiarAluno(msg.id, aluno)"
+                                        :title="`Clique para copiar: ${aluno.nome}`"
+                                        class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold min-w-0 max-w-full text-left cursor-pointer transition-colors"
+                                        :class="msg.remetente_id === currentUser.id
+                                            ? 'bg-white/15 hover:bg-white/25 text-white'
+                                            : 'bg-violet-50 hover:bg-violet-100/80 dark:bg-violet-500/15 dark:hover:bg-violet-500/25 text-violet-700 dark:text-violet-300'"
+                                    >
+                                        <span class="flex items-center gap-1.5 min-w-0">
+                                            <AtSign class="w-3.5 h-3.5 shrink-0 opacity-85" />
+                                            <span class="truncate">{{ aluno.nome }}</span>
+                                            <span class="shrink-0 opacity-75 font-normal">({{ aluno.codigo }})</span>
+                                        </span>
+
+                                        <span class="flex items-center shrink-0 opacity-85">
+                                            <Check v-if="chaveCopiada === `${msg.id}-${aluno.id}`" class="w-3.5 h-3.5" />
+                                            <Copy v-else class="w-3 h-3" />
+                                        </span>
+                                    </button>
                                 </div>
 
                                 <!-- Conteúdo de Texto -->

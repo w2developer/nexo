@@ -239,15 +239,24 @@ export function useChat() {
     };
 
     // Insere mensagem no banco e emite broadcast imediato para o destinatário
-    const enviarMensagem = async (texto, alunoMencionadoId = null) => {
+    const enviarMensagem = async (texto, alunosMencionados = []) => {
         if (!salaAtivaId.value || !texto.trim()) return false;
+
+        const listaAlunos = Array.isArray(alunosMencionados)
+            ? alunosMencionados.map((a) => ({
+                id: a.id,
+                nome: a.nome,
+                codigo: a.codigo
+            }))
+            : [];
 
         const novaMsg = {
             sala_id: salaAtivaId.value,
             remetente_id: currentUser.value.id,
             remetente_tipo: currentUser.value.tipo,
             texto: texto.trim(),
-            aluno_mencionado_id: alunoMencionadoId,
+            aluno_mencionado_id: listaAlunos[0]?.id || null,
+            alunos_mencionados: listaAlunos.length > 0 ? listaAlunos : null,
             lida: false
         };
 
