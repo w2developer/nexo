@@ -26,6 +26,7 @@ const carregando = ref(false);
 const usuariosOnline = ref([]);
 const quemEstaDigitando = ref([]);
 const naoLidasGlobais = ref({});
+const resumoConversas = ref({});
 const minhasSalasIds = ref(new Set());
 const mensagensProcessadas = new Set();
 
@@ -36,7 +37,7 @@ let listenerVisibilidadeAtivo = false;
 export function useChat() {
     const { verificarPermissaoInicial, dispararNotificacao } = useBrowserNotification();
 
-    // Inicializa sessão, contadores, WebSocket e listener de foco
+    // Inicializa sessão, contadores, resumos, WebSocket e listener de foco
     const initChat = async (userId, userName, userTipo) => {
         if (!userId) return;
         currentUser.value = { id: String(userId), nome: userName, tipo: userTipo };
@@ -45,7 +46,10 @@ export function useChat() {
         if (token) supabase.realtime.setAuth(token);
 
         await carregarColegas();
-        await carregarNaoLidas();
+        await Promise.all([
+            carregarNaoLidas(),
+            carregarResumoConversas()
+        ]);
         iniciarRealtime();
         configurarRecuperacaoDeFoco();
         verificarPermissaoInicial();
@@ -59,6 +63,7 @@ export function useChat() {
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser.value.id) {
                 carregarNaoLidas();
+                carregarResumoConversas();
                 if (widgetAberto.value && salaAtivaId.value) {
                     marcarMensagensComoLidas();
                 }
@@ -76,6 +81,70 @@ export function useChat() {
             ...naoLidasGlobais.value,
             [chave]: Math.max(0, novoValor)
         };
+    };
+
+    // Atualiza o resumo da última mensagem de um colega específico
+    const atualizarResumoConversa = (colegaId, mensagem, atualizadoEmOpcional = null) => {
+        if (!colegaId) return;
+        const chave = String(colegaId);
+
+        if (!mensagem) {
+            const copia = { ...resumoConversas.value };
+            delete copia[chave];
+            resumoConversas.value = copia;
+            return;
+        }
+
+        resumoConversas.value = {
+            ...resumoConversas.value,
+            [chave]: {
+                id: mensagem.id || null,
+                texto: mensagem.texto || (mensagem.anexo_url ? 'Imagem enviada' : ''),
+                remetente_id: mensagem.remetente_id ? String(mensagem.remetente_id) : null,
+                criado_em: mensagem.criado_em || atualizadoEmOpcional,
+                atualizado_em: atualizadoEmOpcional || mensagem.criado_em
+            }
+        };
+    };
+
+    // Carrega a última mensagem e data de atividade de cada sala direta
+    const carregarResumoConversas = async () => {
+        if (!currentUser.value.id) return;
+
+        const { data: salas, error } = await supabase
+            .from('chat_sala')
+            .select('id, usuario_a_id, usuario_b_id, atualizado_em, ultimas_mensagens:chat_mensagem(id, texto, remetente_id, criado_em, anexo_url)')
+            .eq('tipo', 'direto')
+            .or(`usuario_a_id.eq.${currentUser.value.id},usuario_b_id.eq.${currentUser.value.id}`)
+            .order('criado_em', { referencedTable: 'chat_mensagem', ascending: false })
+            .limit(1, { referencedTable: 'chat_mensagem' });
+
+        if (error || !salas) return;
+
+        const novoResumo = {};
+        salas.forEach((sala) => {
+            minhasSalasIds.value.add(sala.id);
+
+            const colegaId = String(sala.usuario_a_id) === String(currentUser.value.id)
+                ? String(sala.usuario_b_id)
+                : String(sala.usuario_a_id);
+
+            const ultimaMsg = Array.isArray(sala.ultimas_mensagens)
+                ? sala.ultimas_mensagens[0]
+                : null;
+
+            if (ultimaMsg) {
+                novoResumo[colegaId] = {
+                    id: ultimaMsg.id,
+                    texto: ultimaMsg.texto || (ultimaMsg.anexo_url ? 'Imagem enviada' : ''),
+                    remetente_id: String(ultimaMsg.remetente_id),
+                    criado_em: ultimaMsg.criado_em,
+                    atualizado_em: sala.atualizado_em || ultimaMsg.criado_em
+                };
+            }
+        });
+
+        resumoConversas.value = novoResumo;
     };
 
     // Lista colaboradores exceto o usuário logado
@@ -157,6 +226,9 @@ export function useChat() {
 
             if (historico) {
                 mensagens.value = historico;
+                if (historico.length > 0) {
+                    atualizarResumoConversa(colega.id, historico[historico.length - 1]);
+                }
                 await marcarMensagensComoLidas();
             }
         } catch (err) {
@@ -196,6 +268,12 @@ export function useChat() {
             mensagens.value.push(data);
         }
 
+        const agoraIso = new Date().toISOString();
+
+        if (colegaAtivo.value) {
+            atualizarResumoConversa(colegaAtivo.value.id, data, agoraIso);
+        }
+
         // Envia aviso instantâneo via WebSocket sem depender de SELECT na outra ponta
         if (canalGlobal && colegaAtivo.value) {
             canalGlobal.send({
@@ -211,7 +289,7 @@ export function useChat() {
 
         await supabase
             .from('chat_sala')
-            .update({ atualizado_em: new Date().toISOString() })
+            .update({ atualizado_em: agoraIso })
             .eq('id', salaAtivaId.value);
 
         return true;
@@ -228,6 +306,8 @@ export function useChat() {
         if (mensagensProcessadas.has(nova.id)) return;
         mensagensProcessadas.add(nova.id);
         minhasSalasIds.value.add(nova.sala_id);
+
+        atualizarResumoConversa(nova.remetente_id, nova);
 
         const conversaAbertaComRemetente =
             widgetAberto.value &&
@@ -273,6 +353,12 @@ export function useChat() {
     // Remove mensagem permanentemente
     const excluirMensagem = async (msgId) => {
         mensagens.value = mensagens.value.filter(m => m.id !== msgId);
+
+        if (colegaAtivo.value) {
+            const ultimaRestante = mensagens.value[mensagens.value.length - 1] || null;
+            atualizarResumoConversa(colegaAtivo.value.id, ultimaRestante);
+        }
+
         await supabase.from('chat_mensagem').delete().eq('id', msgId);
     };
 
@@ -414,12 +500,18 @@ export function useChat() {
                 if (minhasSalasIds.value.has(nova.sala_id)) {
                     await processarMensagemRecebida(nova);
                 } else {
-                    await carregarNaoLidas();
+                    await Promise.all([
+                        carregarNaoLidas(),
+                        carregarResumoConversas()
+                    ]);
                 }
             })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_mensagem' }, async (payload) => {
                 mensagens.value = mensagens.value.filter(m => m.id !== payload.old.id);
-                await carregarNaoLidas();
+                await Promise.all([
+                    carregarNaoLidas(),
+                    carregarResumoConversas()
+                ]);
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_mensagem' }, (payload) => {
                 const index = mensagens.value.findIndex(m => m.id === payload.new.id);
@@ -471,10 +563,31 @@ export function useChat() {
         return Object.values(naoLidasGlobais.value).some(qtd => qtd > 0);
     });
 
+    // Ordena contatos pela última atividade (mais recente primeiro), mantendo ordem alfabética como desempate
+    const colegasOrdenados = computed(() => {
+        return [...colegas.value].sort((a, b) => {
+            const resumoA = resumoConversas.value[String(a.id)];
+            const resumoB = resumoConversas.value[String(b.id)];
+
+            const dataA = resumoA?.atualizado_em || resumoA?.criado_em;
+            const dataB = resumoB?.atualizado_em || resumoB?.criado_em;
+
+            const timeA = dataA ? new Date(dataA).getTime() : 0;
+            const timeB = dataB ? new Date(dataB).getTime() : 0;
+
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        });
+    });
+
     return {
-        colegas, mensagens, colegaAtivo, widgetAberto, chatExpandido, currentUser, carregando,
-        usuariosOnline, quemEstaDigitando, naoLidasGlobais, salaAtivaId, temMensagemNaoLida,
-        initChat, toggleWidget, toggleExpandirChat, definirChatExpandido, abrirChatCom,
-        fecharChat, enviarMensagem, excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
+        colegas, colegasOrdenados, mensagens, colegaAtivo, widgetAberto, chatExpandido,
+        currentUser, carregando, usuariosOnline, quemEstaDigitando, naoLidasGlobais,
+        resumoConversas, salaAtivaId, temMensagemNaoLida, initChat, toggleWidget,
+        toggleExpandirChat, definirChatExpandido, abrirChatCom, fecharChat, enviarMensagem,
+        excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
     };
 }

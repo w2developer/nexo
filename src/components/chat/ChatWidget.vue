@@ -21,9 +21,9 @@
     const handleKeydown = (e) => {
         if (e.key === 'Escape' && widgetAberto.value) {
             if (colegaAtivo.value) {
-                fecharChat(); 
+                fecharChat();
             } else {
-                toggleWidget(); 
+                toggleWidget();
             }
         }
     };
@@ -48,15 +48,14 @@
         <div
             v-if="widgetAberto"
             @click="toggleWidget"
-            class="fixed inset-0 bg-slate-900/20 z-[9998]"
+            class="fixed inset-0 bg-slate-900/20 dark:bg-black/50 z-[9998]"
         ></div>
     </Transition>
 
     <div class="fixed bottom-6 left-6 z-[9999] flex flex-col items-start font-sans pointer-events-none">
-        
         <div
             v-if="widgetAberto"
-            class="mb-4 bg-slate-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 flex overflow-hidden transition-all duration-300 origin-bottom-left pointer-events-auto"
+            class="mb-4 bg-slate-50 dark:bg-background rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgb(0,0,0,0.55)] border border-slate-200 dark:border-border flex overflow-hidden transition-all duration-300 origin-bottom-left pointer-events-auto"
             :class="[
                 chatExpandido
                     ? 'w-[calc(100vw-48px)] md:max-w-[1024px] h-[calc(100vh-120px)] max-h-[750px] flex-row'
@@ -66,20 +65,20 @@
             <!-- MODO EXPANDIDO -->
             <template v-if="chatExpandido">
                 <!-- Coluna Esquerda: Lista de Contatos -->
-                <div 
-                    class="border-r border-slate-200 shrink-0 h-full w-full md:w-[320px] lg:w-[340px] bg-white transition-all"
+                <div
+                    class="border-r border-slate-200 dark:border-border shrink-0 h-full w-full md:w-[320px] lg:w-[340px] bg-white dark:bg-muted transition-all"
                     :class="colegaAtivo ? 'hidden md:block' : 'block'"
                 >
                     <ChatListaContatos />
                 </div>
 
                 <!-- Coluna Direita: Conversa ou Vazio -->
-                <div 
-                    class="flex-1 flex flex-col min-w-0 h-full bg-[#f8fafc]"
+                <div
+                    class="flex-1 flex flex-col min-w-0 h-full bg-[#f8fafc] dark:bg-background"
                     :class="colegaAtivo ? 'flex' : 'hidden md:flex'"
                 >
                     <ChatEstadoVazio v-if="!colegaAtivo" />
-                    
+
                     <template v-else>
                         <ChatCabecalho />
                         <ChatMensagens />
@@ -105,14 +104,14 @@
         >
             <div
                 v-if="temMensagemNaoLida && !widgetAberto"
-                class="absolute -top-10 left-0 bg-slate-800 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap flex items-center gap-2 pointer-events-none"
+                class="absolute -top-10 left-0 bg-slate-800 dark:bg-muted dark:border dark:border-border text-white dark:text-foreground text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap flex items-center gap-2 pointer-events-none"
             >
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
                 Nova Mensagem
-                <span class="absolute -bottom-1 left-5 w-2 h-2 bg-slate-800 rotate-45"></span>
+                <span class="absolute -bottom-1 left-5 w-2 h-2 bg-slate-800 dark:bg-muted rotate-45"></span>
             </div>
 
             <X class="w-6 h-6" v-if="widgetAberto" />

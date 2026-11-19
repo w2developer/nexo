@@ -1,3 +1,5 @@
+// src/router/index.js
+
 import { createRouter, createWebHistory } from 'vue-router'
 
 import alunoRoutes from '@/modules/aluno/routers/alunoRoutes.js'

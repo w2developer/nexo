@@ -1,3 +1,5 @@
+// src/modules/shared/routers/sharedRoutes.js
+
 export default [
     {
         path: 'alunos',
