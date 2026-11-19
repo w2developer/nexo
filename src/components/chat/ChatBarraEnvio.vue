@@ -1,6 +1,6 @@
 <script setup>
     import { ref, onUnmounted } from 'vue';
-    import { Send, Smile, AtSign, X } from '@lucide/vue';
+    import { Send, Smile, AtSign, X, ImagePlus, Loader2, Plus } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import { useTheme } from '@/composables/useTheme';
     import { useClickOutside } from '@/composables/useClickOutside';
@@ -11,6 +11,7 @@
         carregando,
         quemEstaDigitando,
         enviarMensagem,
+        uploadAnexoChat,
         sinalizarDigitacao,
         buscarAlunos
     } = useChat();
@@ -19,10 +20,12 @@
 
     const novaMensagem = ref('');
     const inputMensagem = ref(null);
+    const inputArquivo = ref(null);
     const containerBarra = ref(null);
     const enviando = ref(false);
 
-    // Estado do Emoji Picker
+    // Estado dos menus (Ações + Emoji Picker)
+    const mostrarMenuAcoes = ref(false);
     const mostrarPicker = ref(false);
 
     // Estado da menção de alunos (@)
@@ -33,8 +36,16 @@
     const indiceSugestao = ref(0);
     let timeoutBuscaAluno = null;
 
+    // Estado do anexo de imagem
+    const imagemSelecionada = ref(null);
+    const previewImagemUrl = ref(null);
+    const erroAnexo = ref('');
+
     // Fecha popovers ao clicar fora da barra de envio
     useClickOutside(containerBarra, () => {
+        if (mostrarMenuAcoes.value) {
+            mostrarMenuAcoes.value = false;
+        }
         if (mostrarPicker.value) {
             mostrarPicker.value = false;
         }
@@ -45,6 +56,9 @@
 
     onUnmounted(() => {
         clearTimeout(timeoutBuscaAluno);
+        if (previewImagemUrl.value) {
+            URL.revokeObjectURL(previewImagemUrl.value);
+        }
     });
 
     const fecharSugestoes = () => {
@@ -53,11 +67,26 @@
         indiceSugestao.value = 0;
     };
 
-    const togglePicker = () => {
-        mostrarPicker.value = !mostrarPicker.value;
+    const fecharMenus = () => {
+        mostrarMenuAcoes.value = false;
+        mostrarPicker.value = false;
+    };
+
+    const toggleMenuAcoes = () => {
         if (mostrarPicker.value) {
+            mostrarPicker.value = false;
+            return;
+        }
+        mostrarMenuAcoes.value = !mostrarMenuAcoes.value;
+        if (mostrarMenuAcoes.value) {
             fecharSugestoes();
         }
+    };
+
+    const abrirEmojiPicker = () => {
+        mostrarMenuAcoes.value = false;
+        fecharSugestoes();
+        mostrarPicker.value = true;
     };
 
     const onSelectEmoji = (emoji) => {
@@ -73,21 +102,90 @@
         }
     };
 
-    // Detecta padrão @termo antes do cursor e dispara busca com debounce
+    // Valida e prepara a pré-visualização da imagem selecionada ou colada
+    const definirImagem = (arquivo) => {
+        erroAnexo.value = '';
+        if (!arquivo) return;
+
+        if (!arquivo.type?.startsWith('image/')) {
+            erroAnexo.value = 'Selecione apenas arquivos de imagem (PNG, JPG, WEBP ou GIF).';
+            return;
+        }
+
+        if (arquivo.size > 5 * 1024 * 1024) {
+            erroAnexo.value = 'A imagem excede o limite de 5 MB.';
+            return;
+        }
+
+        if (previewImagemUrl.value) {
+            URL.revokeObjectURL(previewImagemUrl.value);
+        }
+
+        imagemSelecionada.value = arquivo;
+        previewImagemUrl.value = URL.createObjectURL(arquivo);
+        fecharMenus();
+
+        if (inputMensagem.value) {
+            inputMensagem.value.focus();
+        }
+    };
+
+    const removerImagem = () => {
+        if (previewImagemUrl.value) {
+            URL.revokeObjectURL(previewImagemUrl.value);
+        }
+        imagemSelecionada.value = null;
+        previewImagemUrl.value = null;
+        erroAnexo.value = '';
+    };
+
+    const abrirSeletorArquivo = () => {
+        if (carregando.value || enviando.value) return;
+        fecharMenus();
+        fecharSugestoes();
+        inputArquivo.value?.click();
+    };
+
+    const aoSelecionarArquivo = (e) => {
+        const arquivo = e.target.files?.[0];
+        if (arquivo) {
+            definirImagem(arquivo);
+        }
+        e.target.value = '';
+    };
+
+    // Intercepta Ctrl+V de prints/imagens na área de digitação
+    const aoColar = (e) => {
+        const itens = e.clipboardData?.items;
+        if (!itens) return;
+
+        for (const item of itens) {
+            if (item.type?.startsWith('image/')) {
+                e.preventDefault();
+                const arquivo = item.getAsFile();
+                if (arquivo) {
+                    definirImagem(arquivo);
+                }
+                return;
+            }
+        }
+    };
+
+    // Detecta padrão @termo (aceitando nomes compostos com espaço) e dispara busca com debounce
     const verificarMencao = (el) => {
         const cursor = el.selectionStart ?? novaMensagem.value.length;
         const textoAteCursor = novaMensagem.value.slice(0, cursor);
-        const match = textoAteCursor.match(/(?:^|\s)@([^\s@]{2,})$/);
+        const match = textoAteCursor.match(/(?:^|\s)@([^\n@]{2,40})$/);
 
         clearTimeout(timeoutBuscaAluno);
 
-        if (!match) {
+        const termo = match ? match[1].trim() : '';
+        if (!match || termo.length < 2) {
             fecharSugestoes();
             return;
         }
 
-        const termo = match[1];
-        mostrarPicker.value = false;
+        fecharMenus();
         mostrarSugestoes.value = true;
         buscandoAlunos.value = true;
 
@@ -100,7 +198,7 @@
         }, 250);
     };
 
-    // Adiciona aluno à lista sem duplicar e remove o @termo do texto
+    // Adiciona aluno à lista sem duplicar e remove todo o @termo (incluindo espaços) do texto
     const selecionarAluno = (aluno) => {
         const jaExiste = alunosSelecionados.value.some(a => String(a.id) === String(aluno.id));
         if (!jaExiste) {
@@ -109,7 +207,7 @@
 
         if (inputMensagem.value) {
             const cursor = inputMensagem.value.selectionStart ?? novaMensagem.value.length;
-            const antes = novaMensagem.value.slice(0, cursor).replace(/(^|\s)@[^\s@]*$/, '$1');
+            const antes = novaMensagem.value.slice(0, cursor).replace(/(^|\s)@[^\n@]*$/, '$1');
             const depois = novaMensagem.value.slice(cursor);
             novaMensagem.value = `${antes}${depois}`;
 
@@ -174,22 +272,36 @@
     };
 
     const handleEnviar = async () => {
-        if (!novaMensagem.value.trim() || enviando.value) return;
+        if ((!novaMensagem.value.trim() && !imagemSelecionada.value) || enviando.value) return;
 
         enviando.value = true;
+        erroAnexo.value = '';
+
         const texto = novaMensagem.value;
         const alunosAtuais = [...alunosSelecionados.value];
+        let anexoUrl = null;
+
+        if (imagemSelecionada.value) {
+            const { url, error } = await uploadAnexoChat(imagemSelecionada.value);
+            if (error || !url) {
+                erroAnexo.value = error || 'Erro ao enviar imagem.';
+                enviando.value = false;
+                return;
+            }
+            anexoUrl = url;
+        }
 
         novaMensagem.value = '';
         alunosSelecionados.value = [];
-        mostrarPicker.value = false;
+        fecharMenus();
         fecharSugestoes();
+        removerImagem();
 
         if (inputMensagem.value) {
             inputMensagem.value.style.height = 'auto';
         }
 
-        const sucesso = await enviarMensagem(texto, alunosAtuais);
+        const sucesso = await enviarMensagem(texto, alunosAtuais, anexoUrl);
 
         if (!sucesso) {
             novaMensagem.value = texto;
@@ -210,6 +322,15 @@
         </div>
 
         <div ref="containerBarra" class="p-4 pt-0 relative">
+            <!-- Input oculto para seleção de imagem no explorador -->
+            <input
+                ref="inputArquivo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                class="hidden"
+                @change="aoSelecionarArquivo"
+            />
+
             <!-- Popover: Sugestões de Alunos (@) -->
             <div
                 v-if="mostrarSugestoes"
@@ -245,6 +366,30 @@
                 </div>
             </div>
 
+            <!-- Popover: Menu de Ações (+) -->
+            <div
+                v-if="mostrarMenuAcoes"
+                class="absolute bottom-full left-4 mb-2 z-20 w-44 p-1.5 bg-white dark:bg-muted rounded-xl shadow-xl border border-slate-200 dark:border-border flex flex-col gap-0.5"
+            >
+                <button
+                    type="button"
+                    @click="abrirSeletorArquivo"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                    <ImagePlus class="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <span>Enviar imagem</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="abrirEmojiPicker"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                    <Smile class="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Inserir emoji</span>
+                </button>
+            </div>
+
             <!-- Popover: Emoji Picker -->
             <div
                 v-if="mostrarPicker"
@@ -255,6 +400,47 @@
                     set="native"
                     :theme="isDark ? 'dark' : 'light'"
                 />
+            </div>
+
+            <!-- Mensagem de erro de anexo -->
+            <div
+                v-if="erroAnexo"
+                class="mb-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center justify-between gap-2"
+            >
+                <span>{{ erroAnexo }}</span>
+                <button type="button" @click="erroAnexo = ''" class="cursor-pointer">
+                    <X class="w-3.5 h-3.5" />
+                </button>
+            </div>
+
+            <!-- Pré-visualização da imagem selecionada / colada -->
+            <div
+                v-if="previewImagemUrl"
+                class="mb-2.5 flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border"
+            >
+                <div class="relative shrink-0">
+                    <img
+                        :src="previewImagemUrl"
+                        alt="Pré-visualização do anexo"
+                        class="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-border"
+                    />
+                    <button
+                        type="button"
+                        @click="removerImagem"
+                        class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-800 text-white hover:bg-red-600 flex items-center justify-center shadow cursor-pointer transition-colors"
+                        title="Remover imagem"
+                    >
+                        <X class="w-3 h-3" />
+                    </button>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-medium text-slate-700 dark:text-foreground truncate">
+                        {{ imagemSelecionada?.name || 'Captura de tela' }}
+                    </p>
+                    <p class="text-[11px] text-slate-400 dark:text-muted-foreground">
+                        Pronta para envio (opcionalmente adicione uma legenda)
+                    </p>
+                </div>
             </div>
 
             <!-- Chips compactos dos Alunos Mencionados -->
@@ -285,34 +471,40 @@
             <form @submit.prevent="handleEnviar" class="flex items-end gap-1.5 bg-slate-100 dark:bg-background p-1.5 rounded-3xl border border-slate-200 dark:border-border focus-within:border-violet-300 dark:focus-within:border-violet-500/60 focus-within:bg-white dark:focus-within:bg-background transition-colors shadow-inner dark:shadow-none">
                 <button
                     type="button"
-                    @click="togglePicker"
-                    class="w-9 h-10 flex items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer"
-                    :class="mostrarPicker
+                    @click="toggleMenuAcoes"
+                    :disabled="carregando || enviando"
+                    class="w-9 h-10 flex items-center justify-center rounded-full transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                    :class="mostrarMenuAcoes || mostrarPicker
                         ? 'text-violet-600 dark:text-violet-400 bg-violet-100/70 dark:bg-violet-500/20'
                         : 'text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 hover:bg-slate-200/50 dark:hover:bg-white/10'"
-                    title="Inserir emoji"
+                    title="Mais opções (imagem ou emoji)"
                 >
-                    <Smile class="w-5 h-5" />
+                    <Plus
+                        class="w-5 h-5 transition-transform duration-200"
+                        :class="mostrarMenuAcoes || mostrarPicker ? 'rotate-45' : ''"
+                    />
                 </button>
 
                 <textarea
                     ref="inputMensagem"
                     v-model="novaMensagem"
                     @input="aoDigitar"
-                    @focus="mostrarPicker = false"
+                    @paste="aoColar"
+                    @focus="fecharMenus"
                     @keydown="aoPressionarTecla"
                     rows="1"
-                    placeholder="Escreva algo... (use @ para mencionar aluno)"
+                    placeholder="(@ aluno ou Ctrl+V print)"
                     class="sem-scroll flex-1 max-h-28 py-2.5 pl-1 pr-1 text-sm leading-5 bg-transparent border-none focus:outline-none focus:ring-0 text-slate-700 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground resize-none overflow-y-auto"
-                    :disabled="carregando"
+                    :disabled="carregando || enviando"
                 ></textarea>
 
                 <button
                     type="submit"
-                    :disabled="!novaMensagem.trim() || enviando || carregando"
+                    :disabled="(!novaMensagem.trim() && !imagemSelecionada) || enviando || carregando"
                     class="w-10 h-10 flex items-center justify-center bg-violet-600 text-white rounded-full hover:bg-violet-700 disabled:opacity-50 disabled:scale-95 transition-all shrink-0 shadow-md cursor-pointer"
                 >
-                    <Send class="w-[18px] h-[18px] ml-0.5" />
+                    <Loader2 v-if="enviando" class="w-[18px] h-[18px] animate-spin" />
+                    <Send v-else class="w-[18px] h-[18px] ml-0.5" />
                 </button>
             </form>
         </div>

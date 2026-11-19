@@ -1,7 +1,7 @@
 <!-- src/components/chat/ChatMensagens.vue -->
 <script setup>
     import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
-    import { Trash2, ThumbsUp, AtSign, Copy, Check } from '@lucide/vue';
+    import { Trash2, ThumbsUp, AtSign, Copy, Check, X, ExternalLink } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import {
         formatarHora,
@@ -23,7 +23,35 @@
 
     const containerMensagens = ref(null);
     const chaveCopiada = ref(null);
+    const imagemAmpliada = ref(null);
+    const imagensCarregadas = ref({});
     let timeoutCopia = null;
+
+    // Marca a imagem como carregada para remover o skeleton e ajustar o scroll
+    const aoCarregarImagem = (msgId) => {
+        imagensCarregadas.value = {
+            ...imagensCarregadas.value,
+            [msgId]: true
+        };
+        rolarParaFinal();
+    };
+
+    // Fecha o Lightbox com Esc antes do listener do ChatWidget
+    const handleEscapeLightbox = (e) => {
+        if (e.key === 'Escape' && imagemAmpliada.value) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            imagemAmpliada.value = null;
+        }
+    };
+
+    const abrirLightbox = (url) => {
+        imagemAmpliada.value = url;
+    };
+
+    const fecharLightbox = () => {
+        imagemAmpliada.value = null;
+    };
 
     // Retorna lista unificada de alunos mencionados (novo formato jsonb ou legado)
     const obterAlunosMencionados = (msg) => {
@@ -73,10 +101,16 @@
         if (!carregando.value) {
             rolarParaFinal();
         }
+        if (typeof window !== 'undefined') {
+            window.addEventListener('keydown', handleEscapeLightbox, true);
+        }
     });
 
     onUnmounted(() => {
         clearTimeout(timeoutCopia);
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('keydown', handleEscapeLightbox, true);
+        }
     });
 
     watch(carregando, (estaCarregando) => {
@@ -130,16 +164,20 @@
 
                             <!-- Balão de Mensagem -->
                             <div
-                                class="px-4 py-2.5 text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-sm min-w-0 max-w-full overflow-hidden"
+                                class="text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-sm min-w-0 max-w-full overflow-hidden"
                                 style="word-break: break-word;"
-                                :class="msg.remetente_id === currentUser.id
-                                    ? 'bg-violet-600 text-white rounded-2xl rounded-tr-sm'
-                                    : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm'"
+                                :class="[
+                                    msg.anexo_url ? 'p-3' : 'px-4 py-2.5',
+                                    msg.remetente_id === currentUser.id
+                                        ? 'bg-violet-600 text-white rounded-2xl rounded-tr-sm'
+                                        : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm'
+                                ]"
                             >
-                                <!-- Cards dos Alunos Mencionados (separados visualmente do texto) -->
+                                <!-- Cards dos Alunos Mencionados -->
                                 <div
                                     v-if="obterAlunosMencionados(msg).length > 0"
-                                    class="flex flex-col gap-1.5 mb-2.5"
+                                    class="flex flex-col gap-1.5"
+                                    :class="msg.texto || msg.anexo_url ? 'mb-2.5' : ''"
                                 >
                                     <button
                                         v-for="aluno in obterAlunosMencionados(msg)"
@@ -165,8 +203,38 @@
                                     </button>
                                 </div>
 
+                                <!-- Anexo de Imagem com reserva de espaço (sem salto de layout) -->
+                                <button
+                                    v-if="msg.anexo_url"
+                                    type="button"
+                                    @click="abrirLightbox(msg.anexo_url)"
+                                    class="relative block overflow-hidden rounded-xl cursor-zoom-in group/img"
+                                    :class="[
+                                        msg.texto ? 'mb-2' : '',
+                                        !imagensCarregadas[msg.id] ? 'w-64 h-48' : ''
+                                    ]"
+                                    title="Clique para ampliar"
+                                >
+                                    <!-- Skeleton enquanto baixa -->
+                                    <div
+                                        v-if="!imagensCarregadas[msg.id]"
+                                        class="absolute inset-0 rounded-xl animate-pulse"
+                                        :class="msg.remetente_id === currentUser.id
+                                            ? 'bg-white/20'
+                                            : 'bg-slate-200 dark:bg-white/10'"
+                                    ></div>
+
+                                    <img
+                                        :src="msg.anexo_url"
+                                        alt="Imagem anexada"
+                                        class="max-h-64 max-w-full object-cover rounded-xl transition-all duration-200 group-hover/img:scale-[1.02]"
+                                        :class="imagensCarregadas[msg.id] ? 'opacity-100' : 'opacity-0'"
+                                        @load="aoCarregarImagem(msg.id)"
+                                    />
+                                </button>
+
                                 <!-- Conteúdo de Texto -->
-                                <div v-html="formatarTextoNegrito(msg.texto)"></div>
+                                <div v-if="msg.texto" v-html="formatarTextoNegrito(msg.texto)"></div>
                             </div>
 
                             <!-- Botão Like (Apenas destinatário) -->
@@ -208,6 +276,45 @@
             </div>
         </template>
     </div>
+
+    <!-- Lightbox de Visualização de Imagem -->
+    <Teleport to="body">
+        <Transition name="fade-lightbox">
+            <div
+                v-if="imagemAmpliada"
+                @click="fecharLightbox"
+                class="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+            >
+                <div class="absolute top-4 right-4 flex items-center gap-2">
+                    <a
+                        :href="imagemAmpliada"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        @click.stop
+                        class="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                        title="Abrir em nova aba"
+                    >
+                        <ExternalLink class="w-5 h-5" />
+                    </a>
+                    <button
+                        type="button"
+                        @click="fecharLightbox"
+                        class="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                        title="Fechar (Esc)"
+                    >
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <img
+                    :src="imagemAmpliada"
+                    alt="Imagem ampliada"
+                    @click.stop
+                    class="max-w-[92vw] max-h-[88vh] object-contain rounded-xl shadow-2xl"
+                />
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -223,5 +330,14 @@
     }
     .scroll-fino::-webkit-scrollbar-thumb:hover {
         background-color: var(--muted-foreground);
+    }
+
+    .fade-lightbox-enter-active,
+    .fade-lightbox-leave-active {
+        transition: opacity 0.15s ease;
+    }
+    .fade-lightbox-enter-from,
+    .fade-lightbox-leave-to {
+        opacity: 0;
     }
 </style>

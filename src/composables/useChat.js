@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { useBrowserNotification } from '@/composables/useBrowserNotification';
 
 const STORAGE_KEY_EXPANDIDO = 'chat_widget_expandido';
+const BUCKET_ANEXOS = 'chat-anexos';
+const TAMANHO_MAXIMO_ANEXO = 5 * 1024 * 1024; // 5 MB
 
 // Lê a preferência de exibição salva pelo usuário
 const lerPreferenciaExpandido = () => {
@@ -180,6 +182,44 @@ export function useChat() {
         return data || [];
     };
 
+    // Faz upload de imagem para o Supabase Storage e retorna a URL pública
+    const uploadAnexoChat = async (arquivo) => {
+        if (!arquivo || !salaAtivaId.value) {
+            return { url: null, error: 'Arquivo ou sala inválida.' };
+        }
+
+        if (!arquivo.type?.startsWith('image/')) {
+            return { url: null, error: 'Apenas imagens são permitidas.' };
+        }
+
+        if (arquivo.size > TAMANHO_MAXIMO_ANEXO) {
+            return { url: null, error: 'A imagem deve ter no máximo 5 MB.' };
+        }
+
+        const extensao = arquivo.name?.split('.').pop()?.toLowerCase() || arquivo.type.split('/')[1] || 'png';
+        const nomeUnico = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensao}`;
+        const caminho = `${salaAtivaId.value}/${nomeUnico}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from(BUCKET_ANEXOS)
+            .upload(caminho, arquivo, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: arquivo.type
+            });
+
+        if (uploadError) {
+            console.error('Erro ao enviar imagem para o Storage:', uploadError);
+            return { url: null, error: 'Falha ao enviar a imagem. Tente novamente.' };
+        }
+
+        const { data } = supabase.storage
+            .from(BUCKET_ANEXOS)
+            .getPublicUrl(caminho);
+
+        return { url: data?.publicUrl || null, error: null };
+    };
+
     // Abre ou cria sala direta com o colega
     const abrirChatCom = async (colega) => {
         if (
@@ -239,8 +279,9 @@ export function useChat() {
     };
 
     // Insere mensagem no banco e emite broadcast imediato para o destinatário
-    const enviarMensagem = async (texto, alunosMencionados = []) => {
-        if (!salaAtivaId.value || !texto.trim()) return false;
+    const enviarMensagem = async (texto, alunosMencionados = [], anexoUrl = null) => {
+        const textoLimpo = (texto || '').trim();
+        if (!salaAtivaId.value || (!textoLimpo && !anexoUrl)) return false;
 
         const listaAlunos = Array.isArray(alunosMencionados)
             ? alunosMencionados.map((a) => ({
@@ -254,7 +295,8 @@ export function useChat() {
             sala_id: salaAtivaId.value,
             remetente_id: currentUser.value.id,
             remetente_tipo: currentUser.value.tipo,
-            texto: texto.trim(),
+            texto: textoLimpo || null,
+            anexo_url: anexoUrl || null,
             aluno_mencionado_id: listaAlunos[0]?.id || null,
             alunos_mencionados: listaAlunos.length > 0 ? listaAlunos : null,
             lida: false
@@ -351,7 +393,7 @@ export function useChat() {
 
         dispararNotificacao(
             `Mensagem de ${nomeExibicao}`,
-            nova.texto,
+            nova.texto || (nova.anexo_url ? 'Enviou uma imagem' : ''),
             () => {
                 widgetAberto.value = true;
                 if (colegaRemetente) abrirChatCom(colegaRemetente);
@@ -359,13 +401,24 @@ export function useChat() {
         );
     };
 
-    // Remove mensagem permanentemente
+    // Remove mensagem permanentemente (e o anexo no Storage, se existir)
     const excluirMensagem = async (msgId) => {
+        const msgAlvo = mensagens.value.find(m => m.id === msgId);
         mensagens.value = mensagens.value.filter(m => m.id !== msgId);
 
         if (colegaAtivo.value) {
             const ultimaRestante = mensagens.value[mensagens.value.length - 1] || null;
             atualizarResumoConversa(colegaAtivo.value.id, ultimaRestante);
+        }
+
+        if (msgAlvo?.anexo_url) {
+            const marcador = `/object/public/${BUCKET_ANEXOS}/`;
+            const partes = msgAlvo.anexo_url.split(marcador);
+            if (partes.length === 2 && partes[1]) {
+                await supabase.storage
+                    .from(BUCKET_ANEXOS)
+                    .remove([decodeURIComponent(partes[1])]);
+            }
         }
 
         await supabase.from('chat_mensagem').delete().eq('id', msgId);
@@ -597,6 +650,6 @@ export function useChat() {
         currentUser, carregando, usuariosOnline, quemEstaDigitando, naoLidasGlobais,
         resumoConversas, salaAtivaId, temMensagemNaoLida, initChat, toggleWidget,
         toggleExpandirChat, definirChatExpandido, abrirChatCom, fecharChat, enviarMensagem,
-        excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
+        uploadAnexoChat, excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
     };
 }
