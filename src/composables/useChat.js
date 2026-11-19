@@ -29,6 +29,7 @@ const usuariosOnline = ref([]);
 const quemEstaDigitando = ref([]);
 const naoLidasGlobais = ref({});
 const resumoConversas = ref({});
+const mensagemRespondendo = ref(null);
 const minhasSalasIds = ref(new Set());
 const mensagensProcessadas = new Set();
 
@@ -220,6 +221,15 @@ export function useChat() {
         return { url: data?.publicUrl || null, error: null };
     };
 
+    // Define ou limpa a mensagem que está sendo respondida
+    const iniciarResposta = (msg) => {
+        mensagemRespondendo.value = msg || null;
+    };
+
+    const cancelarResposta = () => {
+        mensagemRespondendo.value = null;
+    };
+
     // Abre ou cria sala direta com o colega
     const abrirChatCom = async (colega) => {
         if (
@@ -235,6 +245,7 @@ export function useChat() {
         colegaAtivo.value = colega;
         mensagens.value = [];
         quemEstaDigitando.value = [];
+        mensagemRespondendo.value = null;
 
         definirNaoLida(colega.id, 0);
 
@@ -279,7 +290,7 @@ export function useChat() {
     };
 
     // Insere mensagem no banco e emite broadcast imediato para o destinatário
-    const enviarMensagem = async (texto, alunosMencionados = [], anexoUrl = null) => {
+    const enviarMensagem = async (texto, alunosMencionados = [], anexoUrl = null, respostaParaId = null) => {
         const textoLimpo = (texto || '').trim();
         if (!salaAtivaId.value || (!textoLimpo && !anexoUrl)) return false;
 
@@ -299,6 +310,7 @@ export function useChat() {
             anexo_url: anexoUrl || null,
             aluno_mencionado_id: listaAlunos[0]?.id || null,
             alunos_mencionados: listaAlunos.length > 0 ? listaAlunos : null,
+            resposta_para_id: respostaParaId || null,
             lida: false
         };
 
@@ -405,6 +417,10 @@ export function useChat() {
     const excluirMensagem = async (msgId) => {
         const msgAlvo = mensagens.value.find(m => m.id === msgId);
         mensagens.value = mensagens.value.filter(m => m.id !== msgId);
+
+        if (mensagemRespondendo.value?.id === msgId) {
+            mensagemRespondendo.value = null;
+        }
 
         if (colegaAtivo.value) {
             const ultimaRestante = mensagens.value[mensagens.value.length - 1] || null;
@@ -570,6 +586,9 @@ export function useChat() {
             })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_mensagem' }, async (payload) => {
                 mensagens.value = mensagens.value.filter(m => m.id !== payload.old.id);
+                if (mensagemRespondendo.value?.id === payload.old.id) {
+                    mensagemRespondendo.value = null;
+                }
                 await Promise.all([
                     carregarNaoLidas(),
                     carregarResumoConversas()
@@ -597,6 +616,7 @@ export function useChat() {
         salaAtivaId.value = null;
         mensagens.value = [];
         quemEstaDigitando.value = [];
+        mensagemRespondendo.value = null;
     };
 
     const toggleWidget = () => {
@@ -648,8 +668,9 @@ export function useChat() {
     return {
         colegas, colegasOrdenados, mensagens, colegaAtivo, widgetAberto, chatExpandido,
         currentUser, carregando, usuariosOnline, quemEstaDigitando, naoLidasGlobais,
-        resumoConversas, salaAtivaId, temMensagemNaoLida, initChat, toggleWidget,
-        toggleExpandirChat, definirChatExpandido, abrirChatCom, fecharChat, enviarMensagem,
-        uploadAnexoChat, excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
+        resumoConversas, mensagemRespondendo, salaAtivaId, temMensagemNaoLida, initChat,
+        toggleWidget, toggleExpandirChat, definirChatExpandido, abrirChatCom, fecharChat,
+        enviarMensagem, uploadAnexoChat, iniciarResposta, cancelarResposta,
+        excluirMensagem, confirmarLike, sinalizarDigitacao, buscarAlunos
     };
 }

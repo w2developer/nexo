@@ -1,17 +1,22 @@
 <script setup>
-    import { ref, onUnmounted } from 'vue';
-    import { Send, Smile, AtSign, X, ImagePlus, Loader2, Plus } from '@lucide/vue';
+    import { ref, watch, nextTick, onUnmounted } from 'vue';
+    import { Send, Smile, AtSign, X, ImagePlus, Loader2, Plus, Reply, Image } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import { useTheme } from '@/composables/useTheme';
     import { useClickOutside } from '@/composables/useClickOutside';
+    import { formatarNomeExibicao, limparFormatacaoPreview } from '@/utils/chatFormatters';
     import EmojiPicker from 'vue3-emoji-picker';
     import 'vue3-emoji-picker/css';
 
     const {
         carregando,
+        colegaAtivo,
+        currentUser,
         quemEstaDigitando,
+        mensagemRespondendo,
         enviarMensagem,
         uploadAnexoChat,
+        cancelarResposta,
         sinalizarDigitacao,
         buscarAlunos
     } = useChat();
@@ -40,6 +45,22 @@
     const imagemSelecionada = ref(null);
     const previewImagemUrl = ref(null);
     const erroAnexo = ref('');
+
+    // Foca automaticamente no campo de texto ao clicar em "Responder"
+    watch(mensagemRespondendo, async (novaResposta) => {
+        if (novaResposta) {
+            await nextTick();
+            inputMensagem.value?.focus();
+        }
+    });
+
+    const autorMensagemRespondendo = () => {
+        if (!mensagemRespondendo.value) return '';
+        if (String(mensagemRespondendo.value.remetente_id) === String(currentUser.value.id)) {
+            return 'Você';
+        }
+        return formatarNomeExibicao(colegaAtivo.value);
+    };
 
     // Fecha popovers ao clicar fora da barra de envio
     useClickOutside(containerBarra, () => {
@@ -238,7 +259,7 @@
         verificarMencao(el);
     };
 
-    // Navegação por teclado nas sugestões ou envio com Enter
+    // Navegação por teclado nas sugestões, cancelamento de resposta ou envio com Enter
     const aoPressionarTecla = (e) => {
         if (mostrarSugestoes.value) {
             if (e.key === 'ArrowDown' && sugestoesAlunos.value.length > 0) {
@@ -265,6 +286,13 @@
             }
         }
 
+        if (e.key === 'Escape' && mensagemRespondendo.value) {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelarResposta();
+            return;
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleEnviar();
@@ -279,6 +307,7 @@
 
         const texto = novaMensagem.value;
         const alunosAtuais = [...alunosSelecionados.value];
+        const respostaAtual = mensagemRespondendo.value;
         let anexoUrl = null;
 
         if (imagemSelecionada.value) {
@@ -293,6 +322,7 @@
 
         novaMensagem.value = '';
         alunosSelecionados.value = [];
+        cancelarResposta();
         fecharMenus();
         fecharSugestoes();
         removerImagem();
@@ -301,7 +331,12 @@
             inputMensagem.value.style.height = 'auto';
         }
 
-        const sucesso = await enviarMensagem(texto, alunosAtuais, anexoUrl);
+        const sucesso = await enviarMensagem(
+            texto,
+            alunosAtuais,
+            anexoUrl,
+            respostaAtual?.id || null
+        );
 
         if (!sucesso) {
             novaMensagem.value = texto;
@@ -413,6 +448,37 @@
                 </button>
             </div>
 
+            <!-- Banner de Resposta (Reply) -->
+            <div
+                v-if="mensagemRespondendo"
+                class="mb-2.5 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border"
+            >
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+                        <Reply class="w-3.5 h-3.5 shrink-0" />
+                        <span class="truncate">Respondendo a {{ autorMensagemRespondendo() }}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Image v-if="mensagemRespondendo.anexo_url" class="w-3 h-3 shrink-0" />
+                        <span class="truncate">
+                            {{
+                                limparFormatacaoPreview(mensagemRespondendo.texto)
+                                || (mensagemRespondendo.anexo_url ? 'Imagem' : '')
+                            }}
+                        </span>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    @click="cancelarResposta"
+                    class="p-1 rounded-full text-slate-400 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                    title="Cancelar resposta (Esc)"
+                >
+                    <X class="w-4 h-4" />
+                </button>
+            </div>
+
             <!-- Pré-visualização da imagem selecionada / colada -->
             <div
                 v-if="previewImagemUrl"
@@ -493,7 +559,7 @@
                     @focus="fecharMenus"
                     @keydown="aoPressionarTecla"
                     rows="1"
-                    placeholder="(@ aluno ou Ctrl+V print)"
+                    placeholder="Escreva algo... (@ aluno ou Ctrl+V print)"
                     class="sem-scroll flex-1 max-h-28 py-2.5 pl-1 pr-1 text-sm leading-5 bg-transparent border-none focus:outline-none focus:ring-0 text-slate-700 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground resize-none overflow-y-auto"
                     :disabled="carregando || enviando"
                 ></textarea>

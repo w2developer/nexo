@@ -1,14 +1,15 @@
 <!-- src/components/chat/ChatMensagens.vue -->
 <script setup>
-    import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
-    import { Trash2, ThumbsUp, AtSign, Copy, Check, X, ExternalLink } from '@lucide/vue';
+    import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+    import { Trash2, ThumbsUp, AtSign, Copy, Check, X, ExternalLink, Reply, Image } from '@lucide/vue';
     import { useChat } from '@/composables/useChat';
     import {
         formatarHora,
         formatarTextoNegrito,
         obterChaveDia,
         formatarRotuloData,
-        formatarNomeExibicao
+        formatarNomeExibicao,
+        limparFormatacaoPreview
     } from '@/utils/chatFormatters';
 
     const {
@@ -17,6 +18,7 @@
         currentUser,
         carregando,
         chatExpandido,
+        iniciarResposta,
         excluirMensagem,
         confirmarLike
     } = useChat();
@@ -25,7 +27,44 @@
     const chaveCopiada = ref(null);
     const imagemAmpliada = ref(null);
     const imagensCarregadas = ref({});
+    const mensagemDestacadaId = ref(null);
     let timeoutCopia = null;
+    let timeoutDestaque = null;
+
+    // Índice rápido por ID para resolver mensagens citadas sem queries extras
+    const mapaMensagens = computed(() => {
+        const mapa = new Map();
+        mensagens.value.forEach((m) => mapa.set(m.id, m));
+        return mapa;
+    });
+
+    const obterMensagemCitada = (respostaParaId) => {
+        if (!respostaParaId) return null;
+        return mapaMensagens.value.get(respostaParaId) || null;
+    };
+
+    const obterAutorCitacao = (msgCitada) => {
+        if (!msgCitada) return '';
+        if (String(msgCitada.remetente_id) === String(currentUser.value.id)) {
+            return 'Você';
+        }
+        return formatarNomeExibicao(colegaAtivo.value);
+    };
+
+    // Rola até a mensagem original e destaca apenas o balão
+    const irParaMensagemOriginal = (msgId) => {
+        if (!msgId || !containerMensagens.value) return;
+        const elemento = containerMensagens.value.querySelector(`[data-msg-id="${msgId}"]`);
+        if (!elemento) return;
+
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mensagemDestacadaId.value = msgId;
+
+        clearTimeout(timeoutDestaque);
+        timeoutDestaque = setTimeout(() => {
+            mensagemDestacadaId.value = null;
+        }, 1400);
+    };
 
     // Marca a imagem como carregada para remover o skeleton e ajustar o scroll
     const aoCarregarImagem = (msgId) => {
@@ -108,6 +147,7 @@
 
     onUnmounted(() => {
         clearTimeout(timeoutCopia);
+        clearTimeout(timeoutDestaque);
         if (typeof window !== 'undefined') {
             window.removeEventListener('keydown', handleEscapeLightbox, true);
         }
@@ -142,6 +182,7 @@
             </div>
 
             <div
+                :data-msg-id="msg.id"
                 class="flex w-full group"
                 :class="msg.remetente_id === currentUser.id ? 'justify-end' : 'justify-start'"
             >
@@ -151,28 +192,83 @@
                     :class="chatExpandido ? 'max-w-[70%] 2xl:max-w-[60%]' : 'max-w-[85%]'"
                 >
                     <div class="flex flex-col min-w-0 w-full" :class="msg.remetente_id === currentUser.id ? 'items-end' : 'items-start'">
-                        <div class="flex items-center gap-2 max-w-full min-w-0">
-                            <!-- Botão Excluir (Apenas remetente) -->
-                            <button
+                        <div class="flex items-center gap-1.5 max-w-full min-w-0">
+                            <!-- Ações do Remetente (Responder + Excluir) -->
+                            <div
                                 v-if="msg.remetente_id === currentUser.id"
-                                @click="excluirMensagem(msg.id)"
-                                class="opacity-0 group-hover:opacity-100 text-slate-400 dark:text-muted-foreground hover:text-red-500 dark:hover:text-red-400 p-1 transition-opacity shrink-0 cursor-pointer"
-                                title="Apagar mensagem"
+                                class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                             >
-                                <Trash2 class="w-4 h-4" />
-                            </button>
+                                <button
+                                    type="button"
+                                    @click="iniciarResposta(msg)"
+                                    class="text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 p-1 cursor-pointer transition-colors"
+                                    title="Responder mensagem"
+                                >
+                                    <Reply class="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="excluirMensagem(msg.id)"
+                                    class="text-slate-400 dark:text-muted-foreground hover:text-red-500 dark:hover:text-red-400 p-1 cursor-pointer transition-colors"
+                                    title="Apagar mensagem"
+                                >
+                                    <Trash2 class="w-4 h-4" />
+                                </button>
+                            </div>
 
                             <!-- Balão de Mensagem -->
                             <div
-                                class="text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-sm min-w-0 max-w-full overflow-hidden"
+                                class="text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-sm min-w-0 max-w-full overflow-hidden transition-all duration-300"
                                 style="word-break: break-word;"
                                 :class="[
                                     msg.anexo_url ? 'p-3' : 'px-4 py-2.5',
                                     msg.remetente_id === currentUser.id
                                         ? 'bg-violet-600 text-white rounded-2xl rounded-tr-sm'
-                                        : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm'
+                                        : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm',
+                                    mensagemDestacadaId === msg.id
+                                        ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-[#f8fafc] dark:ring-offset-background scale-[1.02]'
+                                        : ''
                                 ]"
                             >
+                                <!-- Bloco de Mensagem Citada (Reply) -->
+                                <button
+                                    v-if="msg.resposta_para_id && obterMensagemCitada(msg.resposta_para_id)"
+                                    type="button"
+                                    @click="irParaMensagemOriginal(msg.resposta_para_id)"
+                                    class="w-full text-left mb-2 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer block min-w-0"
+                                    :class="msg.remetente_id === currentUser.id
+                                        ? 'bg-white/15 hover:bg-white/25 text-white'
+                                        : 'bg-slate-100/90 hover:bg-slate-200/70 dark:bg-background/70 dark:hover:bg-background text-slate-700 dark:text-foreground'"
+                                    title="Ir para a mensagem original"
+                                >
+                                    <div
+                                        class="flex items-center gap-1 text-[11px] font-semibold truncate"
+                                        :class="msg.remetente_id === currentUser.id
+                                            ? 'text-violet-100'
+                                            : 'text-violet-600 dark:text-violet-400'"
+                                    >
+                                        <Reply class="w-3 h-3 shrink-0 opacity-85" />
+                                        <span class="truncate">{{ obterAutorCitacao(obterMensagemCitada(msg.resposta_para_id)) }}</span>
+                                    </div>
+                                    <div
+                                        class="text-xs truncate flex items-center gap-1 mt-0.5"
+                                        :class="msg.remetente_id === currentUser.id
+                                            ? 'text-white/80'
+                                            : 'text-slate-500 dark:text-muted-foreground'"
+                                    >
+                                        <Image
+                                            v-if="obterMensagemCitada(msg.resposta_para_id)?.anexo_url"
+                                            class="w-3 h-3 shrink-0"
+                                        />
+                                        <span class="truncate">
+                                            {{
+                                                limparFormatacaoPreview(obterMensagemCitada(msg.resposta_para_id)?.texto)
+                                                || (obterMensagemCitada(msg.resposta_para_id)?.anexo_url ? 'Imagem' : '')
+                                            }}
+                                        </span>
+                                    </div>
+                                </button>
+
                                 <!-- Cards dos Alunos Mencionados -->
                                 <div
                                     v-if="obterAlunosMencionados(msg).length > 0"
@@ -237,16 +333,29 @@
                                 <div v-if="msg.texto" v-html="formatarTextoNegrito(msg.texto)"></div>
                             </div>
 
-                            <!-- Botão Like (Apenas destinatário) -->
-                            <button
+                            <!-- Ações do Destinatário (Responder + Like) -->
+                            <div
                                 v-if="msg.remetente_id !== currentUser.id"
-                                @click="confirmarLike(msg.id)"
-                                class="btn-like opacity-0 group-hover:opacity-100 p-1 transition-opacity shrink-0 cursor-pointer"
-                                title="Confirmar Mensagem"
-                                :class="msg.like ? 'text-green-500' : 'text-slate-400 dark:text-muted-foreground hover:text-green-500'"
+                                class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                             >
-                                <ThumbsUp class="w-4 h-4" />
-                            </button>
+                                <button
+                                    type="button"
+                                    @click="iniciarResposta(msg)"
+                                    class="text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 p-1 cursor-pointer transition-colors"
+                                    title="Responder mensagem"
+                                >
+                                    <Reply class="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="confirmarLike(msg.id)"
+                                    class="btn-like p-1 cursor-pointer transition-colors"
+                                    title="Confirmar Mensagem"
+                                    :class="msg.like ? 'text-green-500' : 'text-slate-400 dark:text-muted-foreground hover:text-green-500'"
+                                >
+                                    <ThumbsUp class="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Rodapé da Mensagem -->
