@@ -51,6 +51,53 @@
         return formatarNomeExibicao(colegaAtivo.value);
     };
 
+    // Verifica se duas mensagens consecutivas pertencem ao mesmo grupo (remetente, dia e minuto)
+    const mesmoGrupo = (msgA, msgB) => {
+        if (!msgA || !msgB) return false;
+        if (String(msgA.remetente_id) !== String(msgB.remetente_id)) return false;
+        if (!msgA.criado_em || !msgB.criado_em) return false;
+
+        return (
+            obterChaveDia(msgA.criado_em) === obterChaveDia(msgB.criado_em) &&
+            formatarHora(msgA.criado_em) === formatarHora(msgB.criado_em)
+        );
+    };
+
+    const ehAgrupadaComAnterior = (index) => {
+        if (index === 0) return false;
+        return mesmoGrupo(mensagens.value[index - 1], mensagens.value[index]);
+    };
+
+    const ehAgrupadaComProxima = (index) => {
+        if (index >= mensagens.value.length - 1) return false;
+        return mesmoGrupo(mensagens.value[index], mensagens.value[index + 1]);
+    };
+
+    // Define os cantos arredondados do balão conforme a posição no grupo
+    const obterClassesBordasBalao = (msg, index) => {
+        const ehMinha = String(msg.remetente_id) === String(currentUser.value.id);
+        const comAnterior = ehAgrupadaComAnterior(index);
+        const comProxima = ehAgrupadaComProxima(index);
+
+        if (ehMinha) {
+            if (comAnterior && comProxima) return 'rounded-2xl rounded-r-md';
+            if (!comAnterior && comProxima) return 'rounded-2xl rounded-br-md';
+            if (comAnterior && !comProxima) return 'rounded-2xl rounded-tr-md';
+            return 'rounded-2xl rounded-tr-sm';
+        }
+
+        if (comAnterior && comProxima) return 'rounded-2xl rounded-l-md';
+        if (!comAnterior && comProxima) return 'rounded-2xl rounded-bl-md';
+        if (comAnterior && !comProxima) return 'rounded-2xl rounded-tl-md';
+        return 'rounded-2xl rounded-tl-sm';
+    };
+
+    // Exibe o rodapé na última mensagem do grupo ou se houver like em mensagem intermediária
+    const exibirRodape = (msg, index) => {
+        if (!ehAgrupadaComProxima(index)) return true;
+        return String(msg.remetente_id) === String(currentUser.value.id) && msg.like === true;
+    };
+
     // Rola até a mensagem original e destaca apenas o balão
     const irParaMensagemOriginal = (msgId) => {
         if (!msgId || !containerMensagens.value) return;
@@ -172,10 +219,14 @@
     </div>
 
     <!-- Lista de Mensagens -->
-    <div v-else ref="containerMensagens" class="scroll-fino flex-1 overflow-y-auto overflow-x-hidden p-5 flex flex-col gap-4 bg-[#f8fafc] dark:bg-background">
+    <div v-else ref="containerMensagens" class="scroll-fino flex-1 overflow-y-auto overflow-x-hidden p-5 flex flex-col bg-[#f8fafc] dark:bg-background">
         <template v-for="(msg, index) in mensagens" :key="msg.id">
             <!-- Divisor de Data -->
-            <div v-if="exibirDivisorData(index)" class="flex items-center justify-center my-1">
+            <div
+                v-if="exibirDivisorData(index)"
+                class="flex items-center justify-center"
+                :class="index === 0 ? 'mb-3' : 'mt-5 mb-3'"
+            >
                 <span class="px-3 py-1 rounded-full bg-white dark:bg-muted border border-slate-200/80 dark:border-border text-slate-500 dark:text-muted-foreground text-[11px] font-medium shadow-2xs">
                     {{ formatarRotuloData(msg.criado_em) }}
                 </span>
@@ -184,7 +235,14 @@
             <div
                 :data-msg-id="msg.id"
                 class="flex w-full group"
-                :class="msg.remetente_id === currentUser.id ? 'justify-end' : 'justify-start'"
+                :class="[
+                    msg.remetente_id === currentUser.id ? 'justify-end' : 'justify-start',
+                    exibirDivisorData(index)
+                        ? 'mt-0'
+                        : ehAgrupadaComAnterior(index)
+                            ? 'mt-1'
+                            : 'mt-4'
+                ]"
             >
                 <!-- Ajuste dinâmico de largura máxima do balão -->
                 <div
@@ -222,9 +280,10 @@
                                 style="word-break: break-word;"
                                 :class="[
                                     msg.anexo_url ? 'p-3' : 'px-4 py-2.5',
+                                    obterClassesBordasBalao(msg, index),
                                     msg.remetente_id === currentUser.id
-                                        ? 'bg-violet-600 text-white rounded-2xl rounded-tr-sm'
-                                        : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground rounded-2xl rounded-tl-sm',
+                                        ? 'bg-violet-600 text-white'
+                                        : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground',
                                     mensagemDestacadaId === msg.id
                                         ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-[#f8fafc] dark:ring-offset-background scale-[1.02]'
                                         : ''
@@ -358,26 +417,32 @@
                             </div>
                         </div>
 
-                        <!-- Rodapé da Mensagem -->
-                        <div class="flex items-center gap-1.5 mt-1 px-1">
+                        <!-- Rodapé da Mensagem (horário único apenas na última do grupo) -->
+                        <div
+                            v-if="exibirRodape(msg, index)"
+                            class="flex items-center gap-1.5 mt-1 px-1"
+                        >
                             <span
                                 v-if="msg.remetente_id === currentUser.id && msg.like === true"
                                 class="flex items-center gap-1 text-[10px] text-slate-400 dark:text-muted-foreground font-medium"
                             >
                                 <ThumbsUp class="w-3 h-3" />
-                                {{ formatarNomeExibicao(colegaAtivo) }} |
+                                {{ formatarNomeExibicao(colegaAtivo) }}
+                                <template v-if="!ehAgrupadaComProxima(index)">|</template>
                             </span>
 
-                            <span class="text-[10px] text-slate-400 dark:text-muted-foreground font-medium">
-                                {{ formatarHora(msg.criado_em) }}
-                            </span>
+                            <template v-if="!ehAgrupadaComProxima(index)">
+                                <span class="text-[10px] text-slate-400 dark:text-muted-foreground font-medium">
+                                    {{ formatarHora(msg.criado_em) }}
+                                </span>
 
-                            <template v-if="msg.remetente_id === currentUser.id">
-                                <div
-                                    class="w-1.5 h-1.5 rounded-full transition-colors duration-300"
-                                    :class="msg.lida ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
-                                    :title="msg.lida ? 'Lida' : 'Enviada'"
-                                ></div>
+                                <template v-if="msg.remetente_id === currentUser.id">
+                                    <div
+                                        class="w-1.5 h-1.5 rounded-full transition-colors duration-300"
+                                        :class="msg.lida ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
+                                        :title="msg.lida ? 'Lida' : 'Enviada'"
+                                    ></div>
+                                </template>
                             </template>
                         </div>
                     </div>
