@@ -38,10 +38,26 @@
         const formatado = str.replace('_', ' ');
 
         const configs = {
-            'nao_solicitado': { variant: 'ghost', texto: formatado },
-            'pendente': { variant: 'ghost', texto: formatado },
-            'emitido': { variant: 'ghost', texto: formatado },
-            'entregue': { variant: 'ghost', texto: formatado }
+            'nao_solicitado': { 
+                variant: 'ghost', 
+                texto: formatado, 
+                bg: 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200/70' 
+            },
+            'pendente': { 
+                variant: 'ghost', 
+                texto: formatado, 
+                bg: 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100/70' 
+            },
+            'emitido': { 
+                variant: 'ghost', 
+                texto: formatado, 
+                bg: 'bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100/70' 
+            },
+            'entregue': { 
+                variant: 'ghost', 
+                texto: formatado, 
+                bg: 'bg-emerald-200/80 text-emerald-900 border border-emerald-400 hover:bg-emerald-200'
+            }
         };
         return configs[str] || configs['nao_solicitado'];
     };
@@ -217,10 +233,13 @@
                             <div class="hidden md:flex w-40 justify-center">
                                 <Dropdown align="center" class="static">
                                     <template #trigger>
-                                        <div class="cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 bg-background border border-border px-2 py-1 rounded-md shadow-sm">
-                                            <Badge :variant="getConfigCertificado(mat.situacao_certificado).variant" class="text-[9px] md:text-[10px] px-1.5 md:px-2 py-0 uppercase whitespace-nowrap">
+                                        <div :class="getConfigCertificado(mat.situacao_certificado).bg" class="cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 border border-border px-2 py-1 rounded-md shadow-sm">
+                                            <!-- <Badge variant="ghost" class="text-[9px] md:text-[10px] px-1.5 md:px-2 py-0 uppercase whitespace-nowrap">
                                                 {{ getConfigCertificado(mat.situacao_certificado).texto }}
-                                            </Badge>
+                                            </Badge> -->
+                                            <span class="text-[9px] md:text-[10px] px-1.5 md:px-2 py-0 uppercase whitespace-nowrap">
+                                                {{ getConfigCertificado(mat.situacao_certificado).texto }}
+                                            </span>
                                             <ChevronDown class="w-3 h-3 text-muted-foreground" />
                                         </div>
                                     </template>
@@ -228,18 +247,18 @@
                                         <div class="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 border-b border-border">
                                             Status do Certificado
                                         </div>
-                                        <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors text-xs font-medium cursor-pointer">
-                                            <MinusCircle size="14"/> Não Solicitado
-                                        </button>
-                                        <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors text-xs font-medium cursor-pointer">
-                                            <Clock size="14"/> Pendente
-                                        </button>
-                                        <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 transition-colors text-xs font-medium cursor-pointer">
-                                            <FileCheck size="14"/>Emitido
-                                        </button>
-                                        <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full flex gap-2 text-left px-4 py-2 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-colors text-xs font-medium border-t border-border cursor-pointer">
-                                            <CheckCircle size="14"/> Entregue
-                                        </button>
+                                            <button @click="atualizarCertificado(mat.id, 'nao_solicitado')" class="w-full flex items-center gap-2 text-left px-4 py-2 hover:bg-slate-100 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-colors text-xs font-medium cursor-pointer">
+                                                <MinusCircle size="14"/> Não Solicitado
+                                            </button>
+                                            <button @click="atualizarCertificado(mat.id, 'pendente')" class="w-full flex items-center gap-2 text-left px-4 py-2 hover:bg-amber-50 text-amber-700 dark:text-amber-400 dark:hover:bg-amber-500/10 transition-colors text-xs font-medium cursor-pointer">
+                                                <Clock size="14"/> Pendente
+                                            </button>
+                                            <button @click="atualizarCertificado(mat.id, 'emitido')" class="w-full flex items-center gap-2 text-left px-4 py-2 hover:bg-sky-50 text-sky-700 dark:text-sky-400 dark:hover:bg-sky-500/10 transition-colors text-xs font-medium cursor-pointer">
+                                                <FileCheck size="14"/> Emitido
+                                            </button>
+                                            <button @click="atualizarCertificado(mat.id, 'entregue')" class="w-full flex items-center gap-2 text-left px-4 py-2 hover:bg-emerald-50 text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors text-xs font-medium border-t border-border cursor-pointer">
+                                                <CheckCircle size="14"/> Entregue
+                                            </button>
                                     </template>
                                 </Dropdown>
                             </div>
