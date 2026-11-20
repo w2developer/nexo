@@ -12,7 +12,7 @@ export default [
             },
             {
                 path: 'dashboard',
-                component: () => import('@/modules/secretaria/views/Dashboard.vue'),
+                component: () => import('@/modules/shared/views/Dashboard.vue'),
             },
             ...sharedRoutes,
         ],
