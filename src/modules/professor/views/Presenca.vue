@@ -3,33 +3,19 @@
     import { supabase } from '@/lib/supabase';
     import { useRouter } from 'vue-router';
     import { Menu, UserPen, ClipboardClock, SquareCheck, Trash2, CopyPlus } from '@lucide/vue';
-    import Modal from '@/components/ui/Modal.vue'; // <-- Importação do Modal adicionada
-
-    const router = useRouter();
-
-    const irParaDashboard = () => {
-        router.push('/professor/dashboard');
-    };
-
-    const irParaNovaMatricula = (item) => {
-        router.push(`/professor/nova-matricula/${item.aluno_id}`);
-    };
-
-    const irParaEditarAluno = (item) => {
-        router.push(`/professor/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
-    };
+    import Modal from '@/components/ui/Modal.vue';
 
     import { turnos, diaSemana, horas } from '@/utils/constants';
-    import { 
-        getDiaAtual, 
-        getHoraETurnoAtual, 
-        getHojeString, 
-        formatarDataBR, 
-        isDuasSemanasAtras, 
-        isDataVencida, 
-        textoPrevisaoTermino, 
-        calcularTempoRestante, 
-        getUltimaPresenca 
+    import {
+        getDiaAtual,
+        getHoraETurnoAtual,
+        getHojeString,
+        formatarDataBR,
+        isDuasSemanasAtras,
+        isDataVencida,
+        textoPrevisaoTermino,
+        calcularTempoRestante,
+        getUltimaPresenca
     } from '@/utils/dateHelpers';
     import { formatarNome } from '@/utils/formatters';
     import { toast } from '@/composables/useToast';
@@ -54,10 +40,33 @@
     import ModalConcluirAluno from '../components/ModalConcluirAluno.vue';
     import ModalExcluirAluno from '@/modules/shared/components/ModalExcluirAluno.vue';
 
+    const STORAGE_KEY_REORGANIZAR = 'presenca_reorganizar_lista';
+
+    const obterPreferenciaReorganizacao = () => {
+        try {
+            const valorSalvo = localStorage.getItem(STORAGE_KEY_REORGANIZAR);
+            if (valorSalvo === null) return true;
+            return valorSalvo === 'true';
+        } catch {
+            return true;
+        }
+    };
+
+    const router = useRouter();
+
+    const irParaNovaMatricula = (item) => {
+        router.push(`/professor/nova-matricula/${item.aluno_id}`);
+    };
+
+    const irParaEditarAluno = (item) => {
+        router.push(`/professor/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
+    };
+
     const alunos = ref([]);
     const carregandoAlunos = ref(true);
     const erroAlunos = ref(false);
     const presencasConfirmadas = ref([]);
+    const reorganizarLista = ref(obterPreferenciaReorganizacao());
 
     const termoPesquisa = ref('');
     const infoAtual = getHoraETurnoAtual();
@@ -69,10 +78,17 @@
     const matriculaSelecionada = ref(null);
     const modalExclusaoAberto = ref(false);
     const alunoParaExcluir = ref(null);
-    
-    // Variáveis para o Modal de Limpeza de Contatos
+
     const modalLimparContatoAberto = ref(false);
     const matriculaParaLimparContato = ref(null);
+
+    watch(reorganizarLista, (novoValor) => {
+        try {
+            localStorage.setItem(STORAGE_KEY_REORGANIZAR, String(novoValor));
+        } catch (err) {
+            console.error('Erro ao salvar preferência de reorganização:', err);
+        }
+    });
 
     const abrirModalConcluir = (item) => {
         matriculaSelecionada.value = item;
@@ -89,18 +105,16 @@
         alunos.value = alunos.value.filter(item => item.aluno_id !== alunoIdExcluido);
     };
 
-    // 1. Função que verifica os contatos e abre o modal se necessário
+    // Verifica se existem registros de contato antes de confirmar a presença
     const iniciarTogglePresenca = async (item) => {
         const jaConfirmado = presencasConfirmadas.value.includes(item.id);
 
-        // Se estiver desmarcando, desmarca direto sem perguntar
         if (jaConfirmado) {
             efetivarTogglePresenca(item, false);
             return;
         }
 
         try {
-            // Verifica se o aluno tem contatos registrados
             const { data: contatos, error } = await supabase
                 .from('registro_contato')
                 .select('id')
@@ -110,27 +124,23 @@
             if (error) throw error;
 
             if (contatos && contatos.length > 0) {
-                // Tem contato! Abre o modal perguntando
                 matriculaParaLimparContato.value = item;
                 modalLimparContatoAberto.value = true;
             } else {
-                // Não tem contato, marca a presença direto
                 efetivarTogglePresenca(item, false);
             }
         } catch (err) {
-            console.error("Erro ao verificar histórico de contato:", err);
-            // Em caso de erro na verificação, apenas marca a presença por segurança
+            console.error('Erro ao verificar histórico de contato:', err);
             efetivarTogglePresenca(item, false);
         }
     };
 
-    // 2. Função que realmente vai ao banco salvar ou remover a presença
+    // Persiste a marcação ou remoção da presença no banco com atualização otimista
     const efetivarTogglePresenca = async (item, limparContatos = false) => {
         const dataHoje = getHojeString();
         const jaConfirmado = presencasConfirmadas.value.includes(item.id);
         const alunoIndex = alunos.value.findIndex(a => a.id === item.id);
 
-        // Atualização Visual (Otimista)
         if (jaConfirmado) {
             presencasConfirmadas.value = presencasConfirmadas.value.filter(pid => pid !== item.id);
             if (alunoIndex !== -1 && alunos.value[alunoIndex].registro_presenca) {
@@ -147,17 +157,15 @@
         }
 
         try {
-            // Se o professor aceitou limpar os contatos no modal, apaga os registros do banco
             if (!jaConfirmado && limparContatos) {
                 const { error: erroLimpeza } = await supabase
                     .from('registro_contato')
                     .delete()
                     .eq('matricula_id', item.id);
-                
+
                 if (erroLimpeza) throw erroLimpeza;
             }
 
-            // Marca ou desmarca a presença
             if (jaConfirmado) {
                 const { error } = await supabase
                     .from('registro_presenca')
@@ -175,12 +183,12 @@
                 .from('matricula')
                 .update({ atualizado_em: new Date().toISOString() })
                 .eq('id', item.id);
-                
+
             modalLimparContatoAberto.value = false;
         } catch (err) {
-            console.error("Erro ao salvar presença:", err);
-            toast.error("Erro", "Erro de conexão. A ação foi desfeita.");
-            buscarAlunos(true); // Reverte a interface em caso de falha
+            console.error('Erro ao salvar presença:', err);
+            toast.error('Erro', 'Erro de conexão. A ação foi desfeita.');
+            buscarAlunos(true);
         }
     };
 
@@ -216,10 +224,12 @@
         });
 
         return filtrados.slice().sort((a, b) => {
-            const aConfirmado = presencasConfirmadas.value.includes(a.id);
-            const bConfirmado = presencasConfirmadas.value.includes(b.id);
+            if (reorganizarLista.value) {
+                const aConfirmado = presencasConfirmadas.value.includes(a.id);
+                const bConfirmado = presencasConfirmadas.value.includes(b.id);
 
-            if (aConfirmado !== bConfirmado) return aConfirmado ? 1 : -1;
+                if (aConfirmado !== bConfirmado) return aConfirmado ? 1 : -1;
+            }
 
             const nomeA = a.aluno?.nome?.toLowerCase() || '';
             const nomeB = b.aluno?.nome?.toLowerCase() || '';
@@ -227,9 +237,8 @@
         });
     });
 
-    // Contagem de presentes hoje no filtro selecionado
     const presentesNoFiltro = computed(() => {
-        return alunosListagem.value.filter(item => 
+        return alunosListagem.value.filter(item =>
             presencasConfirmadas.value.includes(item.id)
         ).length;
     });
@@ -301,7 +310,31 @@
         <Card class="min-h-[100dvh] flex flex-col">
             <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Marcar Presença ({{ presentesNoFiltro }})</h2>
-                <Button variant="outline" @click="irParaDashboard">Dashboard</Button>
+
+                <label
+                    for="switch-reorganizar"
+                    class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm font-medium"
+                >
+                    <span class="text-muted-foreground">
+                        Reorganizar lista
+                    </span>
+                    <button
+                        id="switch-reorganizar"
+                        type="button"
+                        role="switch"
+                        :aria-checked="reorganizarLista"
+                        @click="reorganizarLista = !reorganizarLista"
+                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer"
+                        :class="reorganizarLista
+                            ? 'bg-foreground'
+                            : 'bg-muted ring-1 ring-inset ring-border'"
+                    >
+                        <span
+                            class="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-sm transition-transform duration-200"
+                            :class="reorganizarLista ? 'translate-x-5' : 'translate-x-0'"
+                        />
+                    </button>
+                </label>
             </CardHeader>
 
             <div v-if="carregandoAlunos" class="p-8 text-center text-muted-foreground">
@@ -326,9 +359,9 @@
 
                         <TableBody>
                             <TransitionGroup name="list">
-                                <TableRow 
-                                    v-for="item in alunosListagem" 
-                                    :key="item.id" 
+                                <TableRow
+                                    v-for="item in alunosListagem"
+                                    :key="item.id"
                                     class="align-middle transition-opacity duration-300"
                                     :class="{'opacity-60 bg-muted/60': presencasConfirmadas.includes(item.id)}"
                                 >
@@ -346,7 +379,7 @@
                                         </div>
                                     </TableCell>
 
-                                    <TableCell 
+                                    <TableCell
                                         class="text-center hidden min-[550px]:table-cell font-medium transition-colors"
                                         :class="isDataVencida(item.data_fim) ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'"
                                     >
@@ -357,7 +390,7 @@
                                         </Tooltip>
                                     </TableCell>
 
-                                    <TableCell 
+                                    <TableCell
                                         class="text-center hidden min-[550px]:table-cell font-medium transition-colors"
                                         :class="isDuasSemanasAtras(getUltimaPresenca(item.registro_presenca)) ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'"
                                     >
@@ -371,18 +404,18 @@
                                         <div class="flex items-center justify-end gap-2">
                                             <Button
                                                 v-if="item.ead !== true"
-                                                size="sm" 
+                                                size="sm"
                                                 :variant="presencasConfirmadas.includes(item.id) ? 'outline' : 'default'"
-                                                @click="iniciarTogglePresenca(item)" 
+                                                @click="iniciarTogglePresenca(item)"
                                             >
                                                 {{ presencasConfirmadas.includes(item.id) ? 'Desfazer' : 'Presença' }}
                                             </Button>
 
                                             <Dropdown>
                                                 <template #trigger>
-                                                    <Button 
+                                                    <Button
                                                         size="sm"
-                                                        variant="outline" 
+                                                        variant="outline"
                                                         class="bg-background border border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm"
                                                     >
                                                         <Menu class="w-4 h-4" />
@@ -410,16 +443,16 @@
                                                         <ClipboardClock class="w-4 h-4" />
                                                         Gerenciar Horários
                                                     </button>
-                                                    <button 
-                                                        @click="abrirModalConcluir(item)" 
+                                                    <button
+                                                        @click="abrirModalConcluir(item)"
                                                         class="w-full flex items-center text-left px-4 py-2 gap-2 cursor-pointer hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded transition-colors text-sm font-medium"
                                                     >
                                                         <SquareCheck class="w-4 h-4" />
                                                         Concluir Aluno
                                                     </button>
                                                     <hr class="my-1 border-border" />
-                                                    <button 
-                                                        @click="abrirModalExclusao(item)" 
+                                                    <button
+                                                        @click="abrirModalExclusao(item)"
                                                         class="w-full flex items-center text-left px-4 py-2 gap-2 cursor-pointer hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded transition-colors text-sm font-medium"
                                                     >
                                                         <Trash2 class="w-4 h-4" />
@@ -445,11 +478,10 @@
         <br>
         <br>
 
-        <!-- Modais Extraídos -->
-        <ModalConcluirAluno 
-            v-model="modalConcluirAberto" 
-            :matricula="matriculaSelecionada" 
-            @concluido="buscarAlunos(true)" 
+        <ModalConcluirAluno
+            v-model="modalConcluirAberto"
+            :matricula="matriculaSelecionada"
+            @concluido="buscarAlunos(true)"
         />
 
         <ModalExcluirAluno
@@ -458,27 +490,25 @@
             @excluido="aoExcluirAluno"
         />
 
-        <!-- NOVO MODAL PARA LIMPEZA DE CONTATOS -->
-        <Modal 
-            v-model="modalLimparContatoAberto" 
-            title="Atenção: Aluno Monitorado" 
+        <Modal
+            v-model="modalLimparContatoAberto"
+            title="Atenção: Aluno Monitorado"
             size="sm"
         >
             <div class="space-y-4 text-sm text-foreground">
                 <p>
-                    O aluno <strong>{{ formatarNome(matriculaParaLimparContato?.aluno?.nome) }}</strong> 
+                    O aluno <strong>{{ formatarNome(matriculaParaLimparContato?.aluno?.nome) }}</strong>
                     possui registros de contato por ausência.
                 </p>
                 <p>
                     Deseja marcar a presença e <strong>apagar</strong> o histórico de cobranças para que ele saia da lista de faltantes da secretaria?
                 </p>
             </div>
-            
+
             <template #footer>
                 <Button variant="ghost" @click="modalLimparContatoAberto = false">
                     Cancelar
                 </Button>
-                <!-- Se aceitar, chama a função efetivando a presença e limpando os contatos -->
                 <Button variant="default" @click="efetivarTogglePresenca(matriculaParaLimparContato, true)">
                     Marcar Presença e Limpar
                 </Button>
