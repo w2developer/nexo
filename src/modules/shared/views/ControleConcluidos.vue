@@ -25,6 +25,7 @@
     import Input from '@/components/ui/Input.vue';
     import Badge from '@/components/ui/Badge.vue';
     import Avatar from '@/components/ui/Avatar.vue';
+    import concluidosPdf from '@/assets/pdf/concluidos.pdf'
 
     // Estados
     const alunos = ref([]);
@@ -168,7 +169,16 @@
                 </div>
             </CardContent>
         </Card>
-
+        <Card class="p-2 pl-4">
+            <a
+            :href="concluidosPdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group inline-flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            >
+            Ver tabela de concluídos do sistema antigo (rps-tsi)
+            </a>
+        </Card>
         <!-- Lista -->
         <Card class="min-h-[60dvh]">
             <div v-if="carregando" class="p-8 text-center text-muted-foreground">
