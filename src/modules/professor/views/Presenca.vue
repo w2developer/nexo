@@ -42,14 +42,15 @@
     import ModalExcluirAluno from '@/modules/shared/components/ModalExcluirAluno.vue';
 
     const STORAGE_KEY_REORGANIZAR = 'presenca_reorganizar_lista';
+    const STORAGE_KEY_NOMES_MAIUSCULOS = 'presenca_nomes_maiusculos';
 
-    const obterPreferenciaReorganizacao = () => {
+    const obterPreferenciaBooleana = (chave, padrao) => {
         try {
-            const valorSalvo = localStorage.getItem(STORAGE_KEY_REORGANIZAR);
-            if (valorSalvo === null) return true;
+            const valorSalvo = localStorage.getItem(chave);
+            if (valorSalvo === null) return padrao;
             return valorSalvo === 'true';
         } catch {
-            return true;
+            return padrao;
         }
     };
 
@@ -67,7 +68,8 @@
     const carregandoAlunos = ref(true);
     const erroAlunos = ref(false);
     const presencasConfirmadas = ref([]);
-    const reorganizarLista = ref(obterPreferenciaReorganizacao());
+    const reorganizarLista = ref(obterPreferenciaBooleana(STORAGE_KEY_REORGANIZAR, true));
+    const nomesMaiusculos = ref(obterPreferenciaBooleana(STORAGE_KEY_NOMES_MAIUSCULOS, false));
 
     const termoPesquisa = ref('');
     const infoAtual = getHoraETurnoAtual();
@@ -88,6 +90,14 @@
             localStorage.setItem(STORAGE_KEY_REORGANIZAR, String(novoValor));
         } catch (err) {
             console.error('Erro ao salvar preferência de reorganização:', err);
+        }
+    });
+
+    watch(nomesMaiusculos, (novoValor) => {
+        try {
+            localStorage.setItem(STORAGE_KEY_NOMES_MAIUSCULOS, String(novoValor));
+        } catch (err) {
+            console.error('Erro ao salvar preferência de nomes em maiúsculo:', err);
         }
     });
 
@@ -309,17 +319,31 @@
         </Card>
 
         <Card class="min-h-[100dvh] flex flex-col">
-            <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border text-foreground">
+            <CardHeader class="flex flex-row items-center justify-between gap-4 p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Marcar Presença ({{ presentesNoFiltro }})</h2>
 
-                <div class="flex items-center gap-2.5">
-                    <label
-                        for="switch-reorganizar"
-                        class="text-sm font-medium text-muted-foreground cursor-pointer select-none"
-                    >
-                        Reorganizar lista
-                    </label>
-                    <Switch id="switch-reorganizar" v-model="reorganizarLista" />
+                <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+                    <div class="flex items-center gap-2">
+                        <label
+                            for="switch-nomes-maiusculos"
+                            class="text-sm font-medium text-muted-foreground cursor-pointer select-none"
+                        >
+                            Nomes em maiúsculo
+                        </label>
+                        <Switch id="switch-nomes-maiusculos" v-model="nomesMaiusculos" />
+                    </div>
+
+                    <span class="hidden sm:block h-4 w-px bg-border" aria-hidden="true" />
+
+                    <div class="flex items-center gap-2">
+                        <label
+                            for="switch-reorganizar"
+                            class="text-sm font-medium text-muted-foreground cursor-pointer select-none"
+                        >
+                            Reorganizar lista
+                        </label>
+                        <Switch id="switch-reorganizar" v-model="reorganizarLista" />
+                    </div>
                 </div>
             </CardHeader>
 
@@ -358,7 +382,10 @@
                                                 class="presenca-avatar transition-shadow duration-200"
                                             />
                                             <div class="flex flex-col">
-                                                <span class="presenca-nome font-medium text-foreground transition-colors duration-200">
+                                                <span
+                                                    class="presenca-nome font-medium text-foreground transition-colors duration-200"
+                                                    :class="{ uppercase: nomesMaiusculos }"
+                                                >
                                                     {{ formatarNome(item.aluno?.nome) }}
                                                 </span>
                                                 <span class="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[300px]">
@@ -487,7 +514,7 @@
         >
             <div class="space-y-4 text-sm text-foreground">
                 <p>
-                    O aluno <strong>{{ formatarNome(matriculaParaLimparContato?.aluno?.nome) }}</strong>
+                    O aluno <strong :class="{ uppercase: nomesMaiusculos }">{{ formatarNome(matriculaParaLimparContato?.aluno?.nome) }}</strong>
                     possui registros de contato por ausência.
                 </p>
                 <p>
