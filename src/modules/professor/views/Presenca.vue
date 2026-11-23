@@ -348,14 +348,17 @@
                                 <TableRow
                                     v-for="item in alunosListagem"
                                     :key="item.id"
-                                    class="align-middle transition-opacity duration-300"
+                                    class="presenca-linha align-middle transition-[background-color,opacity] duration-200"
                                     :class="{'opacity-60 bg-muted/60': presencasConfirmadas.includes(item.id)}"
                                 >
-                                    <TableCell class="pl-4 py-3">
+                                    <TableCell class="presenca-celula-aluno pl-4 py-3 transition-shadow duration-200">
                                         <div class="flex items-center gap-3">
-                                            <Avatar :name="item.aluno?.nome" />
+                                            <Avatar
+                                                :name="item.aluno?.nome"
+                                                class="presenca-avatar transition-shadow duration-200"
+                                            />
                                             <div class="flex flex-col">
-                                                <span class="font-medium text-foreground">
+                                                <span class="presenca-nome font-medium text-foreground transition-colors duration-200">
                                                     {{ formatarNome(item.aluno?.nome) }}
                                                 </span>
                                                 <span class="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[300px]">
@@ -392,6 +395,7 @@
                                                 v-if="item.ead !== true"
                                                 size="sm"
                                                 :variant="presencasConfirmadas.includes(item.id) ? 'outline' : 'default'"
+                                                class="presenca-acao"
                                                 @click="iniciarTogglePresenca(item)"
                                             >
                                                 {{ presencasConfirmadas.includes(item.id) ? 'Desfazer' : 'Presença' }}
@@ -402,7 +406,7 @@
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        class="bg-background border border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm"
+                                                        class="presenca-acao bg-background border border-border text-foreground hover:bg-muted px-2 rounded-md transition-colors shadow-sm"
                                                     >
                                                         <Menu class="w-4 h-4" />
                                                     </Button>
@@ -506,5 +510,26 @@
 <style>
 .list-move {
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.presenca-linha:has(.presenca-acao:is(:hover, :focus-visible)) {
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    opacity: 1;
+}
+
+.dark .presenca-linha:has(.presenca-acao:is(:hover, :focus-visible)) {
+    background-color: color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+
+.presenca-linha:has(.presenca-acao:is(:hover, :focus-visible)) .presenca-celula-aluno {
+    box-shadow: inset 4px 0 0 0 var(--color-primary);
+}
+
+.presenca-linha:has(.presenca-acao:is(:hover, :focus-visible)) .presenca-nome {
+    color: var(--color-primary);
+}
+
+.presenca-linha:has(.presenca-acao:is(:hover, :focus-visible)) .presenca-avatar {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 45%, transparent);
 }
 </style>
