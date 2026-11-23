@@ -31,6 +31,21 @@
     let timeoutCopia = null;
     let timeoutDestaque = null;
 
+    const ehMinhaMensagem = (msg) => {
+        return String(msg?.remetente_id) === String(currentUser.value.id);
+    };
+
+    // Duplo clique no balão recebido confirma ou remove o Like rapidamente
+    const aoDarDuploClique = (msg, event) => {
+        if (ehMinhaMensagem(msg)) return;
+        if (event.target?.closest('button, a')) return;
+
+        if (typeof window !== 'undefined') {
+            window.getSelection()?.removeAllRanges();
+        }
+        confirmarLike(msg.id);
+    };
+
     // Índice rápido por ID para resolver mensagens citadas sem queries extras
     const mapaMensagens = computed(() => {
         const mapa = new Map();
@@ -45,7 +60,7 @@
 
     const obterAutorCitacao = (msgCitada) => {
         if (!msgCitada) return '';
-        if (String(msgCitada.remetente_id) === String(currentUser.value.id)) {
+        if (ehMinhaMensagem(msgCitada)) {
             return 'Você';
         }
         return formatarNomeExibicao(colegaAtivo.value);
@@ -75,7 +90,7 @@
 
     // Define os cantos arredondados do balão conforme a posição no grupo
     const obterClassesBordasBalao = (msg, index) => {
-        const ehMinha = String(msg.remetente_id) === String(currentUser.value.id);
+        const ehMinha = ehMinhaMensagem(msg);
         const comAnterior = ehAgrupadaComAnterior(index);
         const comProxima = ehAgrupadaComProxima(index);
 
@@ -92,10 +107,9 @@
         return 'rounded-2xl rounded-tl-sm';
     };
 
-    // Exibe o rodapé na última mensagem do grupo ou se houver like em mensagem intermediária
-    const exibirRodape = (msg, index) => {
-        if (!ehAgrupadaComProxima(index)) return true;
-        return String(msg.remetente_id) === String(currentUser.value.id) && msg.like === true;
+    // Exibe o rodapé de horário apenas na última mensagem do grupo
+    const exibirRodape = (index) => {
+        return !ehAgrupadaComProxima(index);
     };
 
     // Rola até a mensagem original e destaca apenas o balão
@@ -236,7 +250,7 @@
                 :data-msg-id="msg.id"
                 class="flex w-full group"
                 :class="[
-                    msg.remetente_id === currentUser.id ? 'justify-end' : 'justify-start',
+                    ehMinhaMensagem(msg) ? 'justify-end' : 'justify-start',
                     exibirDivisorData(index)
                         ? 'mt-0'
                         : ehAgrupadaComAnterior(index)
@@ -249,39 +263,40 @@
                     class="flex items-center gap-2 min-w-0"
                     :class="chatExpandido ? 'max-w-[70%] 2xl:max-w-[60%]' : 'max-w-[85%]'"
                 >
-                    <div class="flex flex-col min-w-0 w-full" :class="msg.remetente_id === currentUser.id ? 'items-end' : 'items-start'">
-                        <div class="flex items-center gap-1.5 max-w-full min-w-0">
-                            <!-- Ações do Remetente (Responder + Excluir) -->
+                    <div class="flex flex-col min-w-0 w-full" :class="ehMinhaMensagem(msg) ? 'items-end' : 'items-start'">
+                        <div class="flex items-center gap-2 max-w-full min-w-0">
+                            <!-- Barra Flutuante de Ações (Remetente: Responder + Excluir) -->
                             <div
-                                v-if="msg.remetente_id === currentUser.id"
-                                class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                v-if="ehMinhaMensagem(msg)"
+                                class="flex items-center gap-0.5 p-0.5 rounded-full bg-white/95 dark:bg-muted/95 border border-slate-200/80 dark:border-border shadow-xs opacity-0 group-hover:opacity-100 transition-all duration-150 shrink-0"
                             >
                                 <button
                                     type="button"
                                     @click="iniciarResposta(msg)"
-                                    class="text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 p-1 cursor-pointer transition-colors"
+                                    class="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition-colors"
                                     title="Responder mensagem"
                                 >
-                                    <Reply class="w-4 h-4" />
+                                    <Reply class="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     @click="excluirMensagem(msg.id)"
-                                    class="text-slate-400 dark:text-muted-foreground hover:text-red-500 dark:hover:text-red-400 p-1 cursor-pointer transition-colors"
+                                    class="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 dark:text-muted-foreground hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer transition-colors"
                                     title="Apagar mensagem"
                                 >
-                                    <Trash2 class="w-4 h-4" />
+                                    <Trash2 class="w-3.5 h-3.5" />
                                 </button>
                             </div>
 
                             <!-- Balão de Mensagem -->
                             <div
+                                @dblclick="aoDarDuploClique(msg, $event)"
                                 class="text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-sm min-w-0 max-w-full overflow-hidden transition-all duration-300"
                                 style="word-break: break-word;"
                                 :class="[
                                     msg.anexo_url ? 'p-3' : 'px-4 py-2.5',
                                     obterClassesBordasBalao(msg, index),
-                                    msg.remetente_id === currentUser.id
+                                    ehMinhaMensagem(msg)
                                         ? 'bg-violet-600 text-white'
                                         : 'bg-white dark:bg-muted border border-slate-200 dark:border-border text-slate-700 dark:text-foreground',
                                     mensagemDestacadaId === msg.id
@@ -295,14 +310,14 @@
                                     type="button"
                                     @click="irParaMensagemOriginal(msg.resposta_para_id)"
                                     class="w-full text-left mb-2 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer block min-w-0"
-                                    :class="msg.remetente_id === currentUser.id
+                                    :class="ehMinhaMensagem(msg)
                                         ? 'bg-white/15 hover:bg-white/25 text-white'
                                         : 'bg-slate-100/90 hover:bg-slate-200/70 dark:bg-background/70 dark:hover:bg-background text-slate-700 dark:text-foreground'"
                                     title="Ir para a mensagem original"
                                 >
                                     <div
                                         class="flex items-center gap-1 text-[11px] font-semibold truncate"
-                                        :class="msg.remetente_id === currentUser.id
+                                        :class="ehMinhaMensagem(msg)
                                             ? 'text-violet-100'
                                             : 'text-violet-600 dark:text-violet-400'"
                                     >
@@ -311,7 +326,7 @@
                                     </div>
                                     <div
                                         class="text-xs truncate flex items-center gap-1 mt-0.5"
-                                        :class="msg.remetente_id === currentUser.id
+                                        :class="ehMinhaMensagem(msg)
                                             ? 'text-white/80'
                                             : 'text-slate-500 dark:text-muted-foreground'"
                                     >
@@ -341,7 +356,7 @@
                                         @click="copiarAluno(msg.id, aluno)"
                                         :title="`Clique para copiar: ${aluno.nome}`"
                                         class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold min-w-0 max-w-full text-left cursor-pointer transition-colors"
-                                        :class="msg.remetente_id === currentUser.id
+                                        :class="ehMinhaMensagem(msg)
                                             ? 'bg-white/15 hover:bg-white/25 text-white'
                                             : 'bg-violet-50 hover:bg-violet-100/80 dark:bg-violet-500/15 dark:hover:bg-violet-500/25 text-violet-700 dark:text-violet-300'"
                                     >
@@ -374,7 +389,7 @@
                                     <div
                                         v-if="!imagensCarregadas[msg.id]"
                                         class="absolute inset-0 rounded-xl animate-pulse"
-                                        :class="msg.remetente_id === currentUser.id
+                                        :class="ehMinhaMensagem(msg)
                                             ? 'bg-white/20'
                                             : 'bg-slate-200 dark:bg-white/10'"
                                     ></div>
@@ -392,57 +407,91 @@
                                 <div v-if="msg.texto" v-html="formatarTextoNegrito(msg.texto)"></div>
                             </div>
 
-                            <!-- Ações do Destinatário (Responder + Like) -->
+                            <!-- Barra Flutuante de Ações (Destinatário: Responder + Like) -->
                             <div
-                                v-if="msg.remetente_id !== currentUser.id"
-                                class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                v-if="!ehMinhaMensagem(msg)"
+                                class="flex items-center gap-0.5 p-0.5 rounded-full bg-white/95 dark:bg-muted/95 border border-slate-200/80 dark:border-border shadow-xs opacity-0 group-hover:opacity-100 transition-all duration-150 shrink-0"
                             >
                                 <button
                                     type="button"
                                     @click="iniciarResposta(msg)"
-                                    class="text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 p-1 cursor-pointer transition-colors"
+                                    class="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 dark:text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition-colors"
                                     title="Responder mensagem"
                                 >
-                                    <Reply class="w-4 h-4" />
+                                    <Reply class="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     @click="confirmarLike(msg.id)"
-                                    class="btn-like p-1 cursor-pointer transition-colors"
-                                    title="Confirmar Mensagem"
-                                    :class="msg.like ? 'text-green-500' : 'text-slate-400 dark:text-muted-foreground hover:text-green-500'"
+                                    class="w-7 h-7 flex items-center justify-center rounded-full cursor-pointer transition-colors"
+                                    :title="msg.like ? 'Remover curtida' : 'Curtir (ou dê duplo clique na mensagem)'"
+                                    :class="msg.like
+                                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
+                                        : 'text-slate-400 dark:text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'"
                                 >
-                                    <ThumbsUp class="w-4 h-4" />
+                                    <ThumbsUp class="w-3.5 h-3.5" :class="msg.like ? 'fill-emerald-500/25' : ''" />
                                 </button>
                             </div>
                         </div>
 
+                        <!-- Reação Acoplada à Quina do Balão (sem invadir o conteúdo) -->
+                        <Transition name="like-pop">
+                            <div
+                                v-if="msg.like === true"
+                                class="relative z-10 -mt-1.5 group/like"
+                                :class="[
+                                    ehMinhaMensagem(msg) ? 'mr-1.5' : 'ml-1.5',
+                                    ehAgrupadaComProxima(index) ? 'mb-1.5' : 'mb-0.5'
+                                ]"
+                            >
+                                <!-- Destinatário: botão clicável para desfazer -->
+                                <button
+                                    v-if="!ehMinhaMensagem(msg)"
+                                    type="button"
+                                    @click="confirmarLike(msg.id)"
+                                    class="like-badge relative inline-flex items-center justify-center h-[22px] px-1.5 rounded-full bg-white dark:bg-muted border border-emerald-200/90 dark:border-emerald-500/35 ring-2 ring-[#f8fafc] dark:ring-background shadow-xs text-emerald-600 dark:text-emerald-400 hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                                    aria-label="Remover curtida"
+                                >
+                                    <ThumbsUp class="w-3 h-3 fill-emerald-500/25 stroke-[2.2]" />
+                                </button>
+
+                                <!-- Remetente: indicador de confirmação do colega -->
+                                <div
+                                    v-else
+                                    class="like-badge relative inline-flex items-center justify-center h-[22px] px-1.5 rounded-full bg-white dark:bg-muted border border-emerald-200/90 dark:border-emerald-500/35 ring-2 ring-[#f8fafc] dark:ring-background shadow-xs text-emerald-600 dark:text-emerald-400 select-none"
+                                >
+                                    <ThumbsUp class="w-3 h-3 fill-emerald-500/25 stroke-[2.2]" />
+                                </div>
+
+                                <!-- Tooltip minimalista no hover da reação -->
+                                <span
+                                    class="pointer-events-none opacity-0 group-hover/like:opacity-100 transition-opacity duration-150 absolute bottom-full mb-1.5 px-2 py-1 rounded-md bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-medium whitespace-nowrap shadow-md z-20"
+                                    :class="ehMinhaMensagem(msg) ? 'right-0' : 'left-0'"
+                                >
+                                    {{
+                                        ehMinhaMensagem(msg)
+                                            ? formatarNomeExibicao(colegaAtivo)
+                                            : 'Clique para remover'
+                                    }}
+                                </span>
+                            </div>
+                        </Transition>
+
                         <!-- Rodapé da Mensagem (horário único apenas na última do grupo) -->
                         <div
-                            v-if="exibirRodape(msg, index)"
+                            v-if="exibirRodape(index)"
                             class="flex items-center gap-1.5 mt-1 px-1"
                         >
-                            <span
-                                v-if="msg.remetente_id === currentUser.id && msg.like === true"
-                                class="flex items-center gap-1 text-[10px] text-slate-400 dark:text-muted-foreground font-medium"
-                            >
-                                <ThumbsUp class="w-3 h-3" />
-                                {{ formatarNomeExibicao(colegaAtivo) }}
-                                <template v-if="!ehAgrupadaComProxima(index)">|</template>
+                            <span class="text-[10px] text-slate-400 dark:text-muted-foreground font-medium">
+                                {{ formatarHora(msg.criado_em) }}
                             </span>
 
-                            <template v-if="!ehAgrupadaComProxima(index)">
-                                <span class="text-[10px] text-slate-400 dark:text-muted-foreground font-medium">
-                                    {{ formatarHora(msg.criado_em) }}
-                                </span>
-
-                                <template v-if="msg.remetente_id === currentUser.id">
-                                    <div
-                                        class="w-1.5 h-1.5 rounded-full transition-colors duration-300"
-                                        :class="msg.lida ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
-                                        :title="msg.lida ? 'Lida' : 'Enviada'"
-                                    ></div>
-                                </template>
+                            <template v-if="ehMinhaMensagem(msg)">
+                                <div
+                                    class="w-1.5 h-1.5 rounded-full transition-colors duration-300"
+                                    :class="msg.lida ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
+                                    :title="msg.lida ? 'Lida' : 'Enviada'"
+                                ></div>
                             </template>
                         </div>
                     </div>
@@ -513,5 +562,56 @@
     .fade-lightbox-enter-from,
     .fade-lightbox-leave-to {
         opacity: 0;
+    }
+
+    .like-pop-enter-active {
+        animation: like-spring 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .like-pop-leave-active {
+        transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .like-pop-leave-to {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    .like-badge::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 2px solid rgb(16 185 129 / 0.55);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .like-pop-enter-active .like-badge::after {
+        animation: like-ripple 0.45s ease-out;
+    }
+
+    @keyframes like-spring {
+        0% {
+            opacity: 0;
+            transform: scale(0.4) rotate(-18deg);
+        }
+        65% {
+            opacity: 1;
+            transform: scale(1.16) rotate(6deg);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+    }
+
+    @keyframes like-ripple {
+        0% {
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(1.65);
+        }
     }
 </style>
