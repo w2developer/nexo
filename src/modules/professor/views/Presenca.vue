@@ -29,6 +29,7 @@
     import FormGroup from '@/components/ui/FormGroup.vue';
     import Input from '@/components/ui/Input.vue';
     import Select from '@/components/ui/Select.vue';
+    import Switch from '@/components/ui/Switch.vue';
     import Table from '@/components/ui/Table.vue';
     import TableHeader from '@/components/ui/TableHeader.vue';
     import TableHead from '@/components/ui/TableHead.vue';
@@ -311,30 +312,15 @@
             <CardHeader class="flex flex-row items-center justify-between p-4 font-bold text-xl border-b border-border text-foreground">
                 <h2>Marcar Presença ({{ presentesNoFiltro }})</h2>
 
-                <label
-                    for="switch-reorganizar"
-                    class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm font-medium"
-                >
-                    <span class="text-muted-foreground">
-                        Reorganizar lista
-                    </span>
-                    <button
-                        id="switch-reorganizar"
-                        type="button"
-                        role="switch"
-                        :aria-checked="reorganizarLista"
-                        @click="reorganizarLista = !reorganizarLista"
-                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer"
-                        :class="reorganizarLista
-                            ? 'bg-foreground'
-                            : 'bg-muted ring-1 ring-inset ring-border'"
+                <div class="flex items-center gap-2.5">
+                    <label
+                        for="switch-reorganizar"
+                        class="text-sm font-medium text-muted-foreground cursor-pointer select-none"
                     >
-                        <span
-                            class="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-sm transition-transform duration-200"
-                            :class="reorganizarLista ? 'translate-x-5' : 'translate-x-0'"
-                        />
-                    </button>
-                </label>
+                        Reorganizar lista
+                    </label>
+                    <Switch id="switch-reorganizar" v-model="reorganizarLista" />
+                </div>
             </CardHeader>
 
             <div v-if="carregandoAlunos" class="p-8 text-center text-muted-foreground">

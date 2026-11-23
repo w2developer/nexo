@@ -1,128 +1,150 @@
 <script setup>
-import { ref } from 'vue'
-import Breadcrumb from '@/components/ui/Breadcrumb.vue'
-import Card from '@/components/ui/Card.vue'
-import CardHeader from '@/components/ui/CardHeader.vue'
-import CardContent from '@/components/ui/CardContent.vue'
-import Table from '@/components/ui/Table.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import Button from '@/components/ui/Button.vue'
-import { ExternalLink, Link as LinkIcon, Video, Headphones } from '@lucide/vue'
+    import { onMounted, ref } from 'vue'
+    import { Link, RefreshCw } from '@lucide/vue'
+    import { supabase } from '@/lib/supabase'
+    import Card from '@/components/ui/Card.vue'
+    import Button from '@/components/ui/Button.vue'
+    import Skeleton from '@/components/ui/Skeleton.vue'
+    import Tooltip from '@/components/ui/Tooltip.vue'
 
-const breadcrumbItems = [
-    { label: 'Painel', to: '/aluno/painel', icon: 'home' },
-    { label: 'Materiais Auxiliares' },
-]
+    import Mega from '@/assets/png/mega-logo-96.png'
+    import GoogleDrive from '@/assets/png/google-drive-96.png'
 
-const materiaisAuxiliares = ref([
-    {
-        id: 1,
-        titulo: 'Vídeo Aula - Equações de 2º Grau',
-        tipo: 'Vídeo',
-        disciplina: 'Matemática',
-        link: '#',
-        icon: Video,
-    },
-    {
-        id: 2,
-        titulo: 'Podcast sobre a Guerra Fria',
-        tipo: 'Áudio',
-        disciplina: 'História',
-        link: '#',
-        icon: Headphones,
-    },
-    {
-        id: 3,
-        titulo: 'Artigo: Genética Básica',
-        tipo: 'Link Externo',
-        disciplina: 'Biologia',
-        link: '#',
-        icon: LinkIcon,
-    },
-])
+    const arquivos = ref([])
+    const carregando = ref(true)
+    const erro = ref('')
+
+    const buscarArquivos = async () => {
+        carregando.value = true
+        erro.value = ''
+
+        try {
+            const { data, error } = await supabase
+                .from('arquivo_auxiliar')
+                .select('id, nome, drive_url, mega_url, outro_url')
+                .order('nome', { ascending: true })
+
+            if (error) {
+                throw error
+            }
+
+            arquivos.value = data ?? []
+        } catch (err) {
+            console.error('Erro ao buscar arquivos auxiliares:', err)
+            erro.value = 'Não foi possível carregar os arquivos auxiliares.'
+        } finally {
+            carregando.value = false
+        }
+    }
+
+    // Retorna apenas os links com URL valida (diferente de null ou string vazia)
+    const obterLinksDownload = (arquivo) => {
+        return [
+            {
+                tipo: 'drive',
+                label: 'Google Drive',
+                url: arquivo.drive_url,
+                icone: GoogleDrive
+            },
+            {
+                tipo: 'mega',
+                label: 'Mega',
+                url: arquivo.mega_url,
+                icone: Mega
+            },
+            {
+                tipo: 'outro',
+                label: 'Outro link',
+                url: arquivo.outro_url,
+                icone: null
+            }
+        ].filter((link) => Boolean(link.url && link.url.trim()))
+    }
+
+    onMounted(() => {
+        buscarArquivos()
+    })
 </script>
 
 <template>
-    <div class="space-y-6">
-        <header>
-            <h1 class="text-3xl font-bold tracking-tight">Materiais Auxiliares</h1>
-            <p class="text-muted-foreground mt-2">
-                Explore vídeos, artigos e links complementares para seus estudos.
-            </p>
-        </header>
-
-        <!-- Desktop Table -->
-        <div class="hidden md:block rounded-md border bg-card text-card-foreground shadow-sm">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Título</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Disciplina</TableHead>
-                        <TableHead class="text-right">Acessar</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    <TableRow v-for="material in materiaisAuxiliares" :key="material.id">
-                        <TableCell class="font-medium flex items-center gap-2">
-                            <component :is="material.icon" class="w-4 h-4 text-muted-foreground" />
-                            {{ material.titulo }}
-                        </TableCell>
-                        <TableCell>{{ material.tipo }}</TableCell>
-                        <TableCell>{{ material.disciplina }}</TableCell>
-                        <TableCell class="text-right">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                class="gap-2 text-primary hover:text-primary"
-                            >
-                                <ExternalLink class="w-4 h-4" /> Abrir
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                    <TableRow v-if="materiaisAuxiliares.length === 0">
-                        <TableCell colspan="4" class="h-24 text-center text-muted-foreground">
-                            Nenhum material auxiliar encontrado.
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+    <div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
+        <div v-if="carregando" class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            <Card
+                v-for="item in 4"
+                :key="item"
+                class="flex min-h-14 items-center justify-between gap-4 px-4 py-3"
+            >
+                <Skeleton class="h-4 w-40" />
+                <div class="flex items-center gap-2">
+                    <Skeleton class="size-9" />
+                    <Skeleton class="size-9" />
+                </div>
+            </Card>
         </div>
 
-        <!-- Mobile Cards -->
-        <div class="grid grid-cols-1 gap-4 md:hidden">
-            <Card v-for="material in materiaisAuxiliares" :key="material.id">
-                <CardHeader class="pb-2">
-                    <div class="flex gap-3 items-start">
-                        <div class="mt-1 bg-secondary p-2 rounded-lg text-secondary-foreground">
-                            <component :is="material.icon" class="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 class="font-semibold">{{ material.titulo }}</h3>
-                            <p class="text-sm text-muted-foreground">
-                                {{ material.disciplina }} • {{ material.tipo }}
-                            </p>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div class="mt-2">
-                        <Button variant="outline" class="w-full gap-2">
-                            <ExternalLink class="w-4 h-4" /> Acessar Material
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-            <div
-                v-if="materiaisAuxiliares.length === 0"
-                class="text-center py-8 text-muted-foreground border rounded-xl bg-card"
+        <Card
+            v-else-if="erro"
+            class="flex flex-col items-center justify-center gap-3 p-6 text-center"
+        >
+            <p class="text-sm text-muted-foreground">{{ erro }}</p>
+            <Button variant="outline" size="sm" @click="buscarArquivos">
+                <RefreshCw class="mr-2 size-4" />
+                Tentar novamente
+            </Button>
+        </Card>
+
+        <Card
+            v-else-if="arquivos.length === 0"
+            class="flex items-center justify-center p-6 text-center"
+        >
+            <p class="text-sm text-muted-foreground">
+                Nenhum arquivo auxiliar disponível no momento.
+            </p>
+        </Card>
+
+        <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            <Card
+                v-for="arquivo in arquivos"
+                :key="arquivo.id"
+                class="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:border-slate-300"
             >
-                Nenhum material auxiliar encontrado.
-            </div>
+                <span class="text-sm font-medium text-foreground">
+                    {{ arquivo.nome }}
+                </span>
+
+                <div
+                    v-if="obterLinksDownload(arquivo).length > 0"
+                    class="flex flex-wrap items-center gap-2"
+                >
+                    <Tooltip
+                        v-for="link in obterLinksDownload(arquivo)"
+                        :key="link.tipo"
+                        :content="link.label"
+                    >
+                        <Button
+                            as="a"
+                            :href="link.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="outline"
+                            size="icon"
+                            :aria-label="`Baixar via ${link.label}`"
+                        >
+                            <img
+                                v-if="link.icone"
+                                :src="link.icone"
+                                :alt="link.label"
+                                class="size-4 object-contain"
+                            />
+                            <Link v-else class="size-4" />
+                        </Button>
+                    </Tooltip>
+                </div>
+
+                <span v-else class="text-xs text-muted-foreground">
+                    Sem links disponíveis
+                </span>
+            </Card>
         </div>
     </div>
 </template>
