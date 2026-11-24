@@ -1,10 +1,9 @@
 <script setup>
-import { watch, onMounted, onUnmounted, ref } from 'vue'
+import { watch, onMounted, onUnmounted } from 'vue'
 import { X } from '@lucide/vue'
 import { cva } from 'class-variance-authority'
 import { cn } from '../../utils/cn'
 import Button from './Button.vue'
-import { useClickOutside } from '../../composables/useClickOutside'
 
 const isOpen = defineModel({ type: Boolean, default: false })
 
@@ -14,15 +13,9 @@ const props = defineProps({
     size: { type: String, default: 'md' },
 })
 
-const modalRef = ref(null)
-
 const close = () => {
     isOpen.value = false
 }
-
-useClickOutside(modalRef, () => {
-    if (isOpen.value) close()
-})
 
 const handleKeydown = (e) => {
     if (e.key === 'Escape' && isOpen.value) {
@@ -75,7 +68,11 @@ const modalVariants = cva(
             leave-from-class="opacity-100"
             leave-to-class="opacity-0"
         >
-            <div v-if="isOpen" class="fixed inset-0 z-[100] bg-black/60" />
+            <div
+                v-if="isOpen"
+                class="fixed inset-0 z-[100] bg-black/60"
+                @mousedown="close"
+            />
         </Transition>
 
         <!-- Painel Central -->
@@ -91,7 +88,7 @@ const modalVariants = cva(
             <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
                 
                 <!-- O modal em si que recebe os eventos de clique -->
-                <div ref="modalRef" :class="cn(modalVariants({ size }), 'pointer-events-auto')">
+                <div :class="cn(modalVariants({ size }), 'pointer-events-auto')">
                     
                     <!-- Cabeçalho (shrink-0 impede que amasse caso o conteúdo cresça) -->
                     <div class="mb-4 flex items-start justify-between gap-4 shrink-0">

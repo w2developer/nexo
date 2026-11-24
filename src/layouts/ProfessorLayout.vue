@@ -1,5 +1,5 @@
 <script setup>
-import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus, RefreshCw, LayoutDashboard } from '@lucide/vue'
+import { List, ListChecks, Settings, ListTodo, MessageCircle, ListPlus, RefreshCw, LayoutDashboard, FolderCog } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
 
@@ -47,6 +47,11 @@ const navigation = [
         title: 'Cadastrar Aluno',
         to: '/professor/cadastrar-aluno',
         icon: ListPlus,
+    },
+    {
+        title: 'Gestão de Conteúdo (TESTE)',
+        to: '/professor/gestao-de-conteudo',
+        icon: FolderCog,
     },
     // {
     //     title: 'Mensagens',

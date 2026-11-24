@@ -14,6 +14,10 @@ export default [
                 path: 'dashboard',
                 component: () => import('@/modules/shared/views/Dashboard.vue'),
             },
+            {
+                path: 'gestao-de-conteudo',
+                component: () => import('@/modules/professor/views/GestaoConteudo.vue'),
+            },
             ...sharedRoutes,
         ],
     },
