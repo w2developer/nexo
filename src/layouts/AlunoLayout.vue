@@ -1,7 +1,7 @@
 <script setup>
     import { onMounted } from 'vue';
     import { useRoute } from 'vue-router';
-    import { LayoutDashboard, ListTodo, FileText, FolderOpen } from '@lucide/vue';
+    import { LayoutDashboard, ListTodo, FileText, FolderOpen, Trophy } from '@lucide/vue';
 
     import { useAlunoSessao } from '@/modules/aluno/composables/useAlunoSessao';
     import AppLayout from '@/components/layout/AppLayout.vue';
@@ -19,6 +19,11 @@
                     title: 'Painel',
                     to: '/aluno/painel',
                     icon: LayoutDashboard
+                },
+                {
+                    title: 'Ranking',
+                    to: '/aluno/ranking',
+                    icon: Trophy
                 }
             ]
         },

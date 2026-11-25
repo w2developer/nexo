@@ -9,6 +9,10 @@ export default [
                 component: () => import('@/modules/aluno/Painel.vue')
             },
             {
+                path: 'ranking',
+                component: () => import('@/modules/aluno/views/Ranking.vue')
+            },
+            {
                 path: 'atividades',
                 component: () => import('@/modules/aluno/views/Atividades.vue')
             },
