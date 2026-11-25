@@ -1,26 +1,35 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
         fetch: (url, options) => {
-            const token = sessionStorage.getItem('token_acesso')
+            const token = sessionStorage.getItem('token_acesso');
             if (token) {
                 if (!options.headers) {
-                    options.headers = new Headers()
+                    options.headers = new Headers();
                 }
                 if (options.headers instanceof Headers) {
-                    options.headers.set('Authorization', `Bearer ${token}`)
+                    options.headers.set('Authorization', `Bearer ${token}`);
                 } else {
                     options.headers = {
                         ...options.headers,
-                        Authorization: `Bearer ${token}`,
-                    }
+                        Authorization: `Bearer ${token}`
+                    };
                 }
             }
-            return fetch(url, options)
-        },
-    },
-})
+            return fetch(url, options);
+        }
+    }
+});
+
+export const sincronizarRealtimeAuth = () => {
+    const token = sessionStorage.getItem('token_acesso');
+    if (token) {
+        supabase.realtime.setAuth(token);
+    }
+};
+
+sincronizarRealtimeAuth();
