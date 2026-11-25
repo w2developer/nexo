@@ -1,10 +1,19 @@
 <script setup>
-    import { ref, computed, onMounted, onUnmounted } from 'vue';
+    import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
     import { useRouter, useRoute } from 'vue-router';
     import { supabase } from '@/lib/supabase';
-    import { 
-        AlertTriangle, Clock, Award, Users, Search, 
-        PhoneCall, CheckCircle2, Edit, ChevronDown, Calendar, MessageSquare 
+    import {
+        AlertTriangle,
+        Clock,
+        Award,
+        Users,
+        Search,
+        PhoneCall,
+        CheckCircle2,
+        Edit,
+        ChevronDown,
+        Calendar,
+        MessageSquare
     } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
     import { formatarDataBR, getHojeString } from '@/utils/dateHelpers';
@@ -30,6 +39,8 @@
     import Tooltip from '@/components/ui/Tooltip.vue';
     import ModalConcluirAluno from '@/modules/professor/components/ModalConcluirAluno.vue';
 
+    const ABAS_VALIDAS = new Set(['faltantes', 'prazos', 'certificados']);
+
     const router = useRouter();
     const route = useRoute();
 
@@ -37,19 +48,28 @@
         return route.path.startsWith('/secretaria') ? '/secretaria' : '/professor';
     });
 
-    // Nome do usuário logado
+    const ehSecretaria = computed(() => {
+        return (sessionStorage.getItem('tipo_usuario') || '').toLowerCase() === 'secretaria';
+    });
+
+    // Nome do usuario logado
     const nomeUsuarioLogado = computed(() => {
         return sessionStorage.getItem('nome_usuario') || 'Colaborador';
     });
 
-    // Store global de pendências
-    const { 
+    // Store global de pendencias
+    const {
         carregando,
-        listaFaltantes, 
-        listaPrazos, 
-        listaCertificados, 
+        listaFaltantes,
+        faltantesAcaoImediata,
+        listaPrazos,
+        listaCertificados,
         totalCursando,
-        carregarDadosGlobais 
+        contatosHoje,
+        metaContatosDia,
+        progressoMetaDiaria,
+        metaDiariaAtingida,
+        carregarDadosGlobais
     } = usePendencias();
 
     // Estados da interface
@@ -64,6 +84,24 @@
     const observacaoContato = ref('');
     const salvandoContato = ref(false);
 
+    // Sincroniza aba ativa com ?aba=... vindo do sino, faixa ou modal
+    watch(
+        () => route.query.aba,
+        (abaQuery) => {
+            if (typeof abaQuery === 'string' && ABAS_VALIDAS.has(abaQuery)) {
+                abaAtiva.value = abaQuery;
+            }
+        },
+        { immediate: true }
+    );
+
+    const selecionarAba = (novaAba) => {
+        abaAtiva.value = novaAba;
+        if (route.query.aba !== novaAba) {
+            router.replace({ query: { ...route.query, aba: novaAba } });
+        }
+    };
+
     // Filtra a fila ativa pela busca
     const itensExibidos = computed(() => {
         const termo = termoPesquisa.value.toLowerCase().trim();
@@ -75,7 +113,7 @@
 
         if (!termo) return base;
 
-        return base.filter(item => 
+        return base.filter(item =>
             (item.aluno?.nome?.toLowerCase() || '').includes(termo) ||
             (item.aluno?.codigo?.toLowerCase() || '').includes(termo) ||
             (item.curso?.nome?.toLowerCase() || '').includes(termo)
@@ -88,7 +126,7 @@
         modalContatoAberto.value = true;
     };
 
-    // Salva novo contato com nome do responsável
+    // Salva novo contato com nome do responsavel
     const confirmarRegistroContato = async () => {
         if (!itemContatoSelecionado.value) return;
 
@@ -105,13 +143,13 @@
 
             if (error) throw error;
 
-            toast.success("Sucesso", `Contato com ${formatarNome(itemContatoSelecionado.value.aluno?.nome)} registrado!`);
+            toast.success('Sucesso', `Contato com ${formatarNome(itemContatoSelecionado.value.aluno?.nome)} registrado!`);
             modalContatoAberto.value = false;
-            
+
             carregarDadosGlobais(true);
         } catch (err) {
-            console.error("Erro ao registrar contato:", err);
-            toast.error("Erro", "Não foi possível salvar o contato.");
+            console.error('Erro ao registrar contato:', err);
+            toast.error('Erro', 'Não foi possível salvar o contato.');
         } finally {
             salvandoContato.value = false;
         }
@@ -128,12 +166,12 @@
                 .eq('id', matriculaId);
 
             if (error) throw error;
-            toast.success("Sucesso", "Status do certificado atualizado!");
-            
+            toast.success('Sucesso', 'Status do certificado atualizado!');
+
             carregarDadosGlobais(true);
         } catch (err) {
-            console.error("Erro ao atualizar certificado:", err);
-            toast.error("Erro", "Não foi possível atualizar o certificado.");
+            console.error('Erro ao atualizar certificado:', err);
+            toast.error('Erro', 'Não foi possível atualizar o certificado.');
         }
     };
 
@@ -146,7 +184,7 @@
         router.push(`${basePath.value}/editar-aluno/${item.aluno_id}?matricula=${item.id}`);
     };
 
-    // Atualização silenciosa via Maestro
+    // Atualizacao silenciosa via Maestro
     const atualizarSilencioso = () => carregarDadosGlobais(true);
 
     onMounted(() => {
@@ -173,10 +211,10 @@
         <!-- Cards de Resumo (KPIs) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Card 1: Faltantes -->
-            <Card 
+            <Card
                 class="cursor-pointer transition-all hover:shadow-md border-2"
                 :class="abaAtiva === 'faltantes' ? 'border-rose-500 bg-rose-500/10' : 'border-transparent'"
-                @click="abaAtiva = 'faltantes'"
+                @click="selecionarAba('faltantes')"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
@@ -197,10 +235,10 @@
             </Card>
 
             <!-- Card 2: Reta Final -->
-            <Card 
+            <Card
                 class="cursor-pointer transition-all hover:shadow-md border-2"
                 :class="abaAtiva === 'prazos' ? 'border-amber-500 bg-amber-500/10' : 'border-transparent'"
-                @click="abaAtiva = 'prazos'"
+                @click="selecionarAba('prazos')"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
@@ -221,10 +259,10 @@
             </Card>
 
             <!-- Card 3: Certificados -->
-            <Card 
+            <Card
                 class="cursor-pointer transition-all hover:shadow-md border-2"
                 :class="abaAtiva === 'certificados' ? 'border-indigo-500 bg-indigo-500/10' : 'border-transparent'"
-                @click="abaAtiva = 'certificados'"
+                @click="selecionarAba('certificados')"
             >
                 <CardContent class="p-4 flex items-center justify-between">
                     <div>
@@ -269,24 +307,24 @@
         <Card class="min-h-[60dvh] flex flex-col">
             <CardHeader class="p-4 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex flex-wrap items-center gap-2">
-                    <Button 
-                        size="sm" 
+                    <Button
+                        size="sm"
                         :variant="abaAtiva === 'faltantes' ? 'default' : 'outline'"
-                        @click="abaAtiva = 'faltantes'"
+                        @click="selecionarAba('faltantes')"
                     >
                         Faltantes ({{ listaFaltantes.length }})
                     </Button>
-                    <Button 
-                        size="sm" 
+                    <Button
+                        size="sm"
                         :variant="abaAtiva === 'prazos' ? 'default' : 'outline'"
-                        @click="abaAtiva = 'prazos'"
+                        @click="selecionarAba('prazos')"
                     >
                         Reta Final ({{ listaPrazos.length }})
                     </Button>
-                    <Button 
-                        size="sm" 
+                    <Button
+                        size="sm"
                         :variant="abaAtiva === 'certificados' ? 'default' : 'outline'"
-                        @click="abaAtiva = 'certificados'"
+                        @click="selecionarAba('certificados')"
                     >
                         Certificados ({{ listaCertificados.length }})
                     </Button>
@@ -294,13 +332,64 @@
 
                 <div class="relative w-full md:w-72">
                     <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                        v-model="termoPesquisa" 
-                        placeholder="Filtrar por aluno ou curso..." 
-                        class="pl-9 h-9 text-sm" 
+                    <Input
+                        v-model="termoPesquisa"
+                        placeholder="Filtrar por aluno ou curso..."
+                        class="pl-9 h-9 text-sm"
                     />
                 </div>
             </CardHeader>
+
+            <!-- Camada C: Barra compacta de Meta Diaria de Contatos (Exclusiva Secretaria na aba Faltantes) -->
+            <div
+                v-if="ehSecretaria && abaAtiva === 'faltantes' && !carregando"
+                class="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                :class="metaDiariaAtingida ? 'bg-emerald-500/5' : 'bg-muted/30'"
+            >
+                <div class="flex items-center gap-2.5 text-xs">
+                    <div
+                        class="flex h-7 w-7 items-center justify-center rounded-md shrink-0"
+                        :class="
+                            metaDiariaAtingida
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
+                        "
+                    >
+                        <CheckCircle2 v-if="metaDiariaAtingida" class="w-4 h-4" />
+                        <PhoneCall v-else class="w-4 h-4" />
+                    </div>
+
+                    <div>
+                        <p class="font-semibold text-foreground">
+                            Contatos registrados hoje:
+                            <span class="tabular-nums">{{ contatosHoje }} / {{ metaContatosDia }}</span>
+                        </p>
+                        <p class="text-muted-foreground">
+                            <template v-if="metaDiariaAtingida">
+                                Meta diária atingida! Restam {{ faltantesAcaoImediata.length }} alunos aguardando contato na fila.
+                            </template>
+                            <template v-else>
+                                Faltam {{ metaContatosDia - contatosHoje }}
+                                {{ metaContatosDia - contatosHoje === 1 ? 'contato' : 'contatos' }}
+                                para bater a meta de hoje · {{ faltantesAcaoImediata.length }} sem retorno na fila.
+                            </template>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 sm:w-48 shrink-0">
+                    <div class="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                        <div
+                            class="h-full rounded-full transition-all duration-300"
+                            :class="metaDiariaAtingida ? 'bg-emerald-500' : 'bg-indigo-600 dark:bg-indigo-500'"
+                            :style="{ width: `${progressoMetaDiaria}%` }"
+                        ></div>
+                    </div>
+                    <span class="text-xs font-semibold text-muted-foreground tabular-nums w-9 text-right">
+                        {{ progressoMetaDiaria }}%
+                    </span>
+                </div>
+            </div>
 
             <div v-if="carregando" class="p-12 text-center text-muted-foreground">
                 Carregando pendências da secretaria...
@@ -349,33 +438,33 @@
 
                             <TableCell class="text-center">
                                 <div class="flex flex-col items-center gap-1">
-                                    <Badge 
-                                        v-if="item.statusContato === 'sem_contato'" 
-                                        variant="ghost" 
+                                    <Badge
+                                        v-if="item.statusContato === 'sem_contato'"
+                                        variant="ghost"
                                         class="text-[10px]"
                                     >
                                         Nenhum Contato
                                     </Badge>
 
-                                    <Badge 
-                                        v-else-if="item.statusContato === 'rechamada'" 
-                                        variant="warning" 
+                                    <Badge
+                                        v-else-if="item.statusContato === 'rechamada'"
+                                        variant="warning"
                                         class="text-[10px]"
                                     >
                                         Não retornou
                                     </Badge>
 
-                                    <Badge 
-                                        v-else 
+                                    <Badge
+                                        v-else
                                         variant="success"
                                         class="text-[10px]"
                                     >
                                         Contatado
                                     </Badge>
 
-                                    <!-- Botão para abrir o histórico -->
-                                    <button 
-                                        v-if="item.ultimoContato" 
+                                    <!-- Botao para abrir o historico -->
+                                    <button
+                                        v-if="item.ultimoContato"
                                         type="button"
                                         @click="abrirModalContato(item)"
                                         class="text-[11px] text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
@@ -390,18 +479,18 @@
                             <TableCell class="pr-4 py-2 text-end">
                                 <div class="flex items-center justify-end gap-2">
                                     <Tooltip :content="item.ultimoContato ? 'Novo Contato' : 'Registrar Contato'" position="top">
-                                        <Button 
-                                            size="sm" 
+                                        <Button
+                                            size="sm"
                                             :variant="item.statusContato === 'aguardando' ? 'outline' : 'default'"
                                             @click="abrirModalContato(item)"
                                         >
-                                            <PhoneCall size="14"/>
+                                            <PhoneCall size="14" />
                                         </Button>
                                     </Tooltip>
 
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
                                         class="px-2.5 bg-background border-border text-foreground hover:bg-muted"
                                         @click="irParaEditarAluno(item)"
                                         title="Editar dados do aluno"
@@ -445,23 +534,23 @@
                             </TableCell>
 
                             <TableCell class="text-center">
-                                <Badge 
-                                    v-if="item.diasRestantes < 0" 
-                                    variant="destructive" 
+                                <Badge
+                                    v-if="item.diasRestantes < 0"
+                                    variant="destructive"
                                     class="text-[11px]"
                                 >
                                     Vencido há {{ Math.abs(item.diasRestantes) }} dias
                                 </Badge>
-                                <Badge 
-                                    v-else-if="item.diasRestantes === 0" 
-                                    variant="default" 
+                                <Badge
+                                    v-else-if="item.diasRestantes === 0"
+                                    variant="default"
                                     class="bg-amber-500 text-white text-[11px]"
                                 >
                                     Termina Hoje
                                 </Badge>
-                                <Badge 
-                                    v-else 
-                                    variant="secondary" 
+                                <Badge
+                                    v-else
+                                    variant="secondary"
                                     class="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px]"
                                 >
                                     Faltam {{ item.diasRestantes }} dias
@@ -470,8 +559,8 @@
 
                             <TableCell class="pr-4 py-2 text-end">
                                 <div class="flex items-center justify-end gap-2">
-                                    <Button 
-                                        size="sm" 
+                                    <Button
+                                        size="sm"
                                         variant="default"
                                         class="bg-emerald-600 hover:bg-emerald-700 text-white"
                                         @click="abrirModalConcluir(item)"
@@ -480,9 +569,9 @@
                                         <span class="hidden sm:inline">Concluir</span>
                                     </Button>
 
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
                                         class="px-2.5 bg-background border-border text-foreground hover:bg-muted"
                                         @click="irParaEditarAluno(item)"
                                         title="Prorrogar prazo ou editar matrícula"
@@ -526,23 +615,23 @@
                             </TableCell>
 
                             <TableCell class="text-center">
-                                <Badge 
-                                    v-if="item.situacao_certificado === 'nao_solicitado'" 
-                                    variant="destructive" 
+                                <Badge
+                                    v-if="item.situacao_certificado === 'nao_solicitado'"
+                                    variant="destructive"
                                     class="text-[10px] uppercase"
                                 >
                                     Não Solicitado
                                 </Badge>
-                                <Badge 
-                                    v-else-if="item.situacao_certificado === 'pendente'" 
-                                    variant="secondary" 
+                                <Badge
+                                    v-else-if="item.situacao_certificado === 'pendente'"
+                                    variant="secondary"
                                     class="bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] uppercase"
                                 >
                                     Pendente
                                 </Badge>
-                                <Badge 
-                                    v-else 
-                                    variant="secondary" 
+                                <Badge
+                                    v-else
+                                    variant="secondary"
                                     class="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] uppercase"
                                 >
                                     Emitido (Aguardando Entrega)
@@ -581,10 +670,10 @@
             </CardContent>
         </Card>
 
-        <!-- Modal de Registro e Histórico de Contato -->
-        <Modal 
-            v-model="modalContatoAberto" 
-            title="Acompanhamento de Faltas" 
+        <!-- Modal de Registro e Historico de Contato -->
+        <Modal
+            v-model="modalContatoAberto"
+            title="Acompanhamento de Faltas"
             size="md"
         >
             <div v-if="itemContatoSelecionado" class="space-y-4">
@@ -596,24 +685,24 @@
                             {{ formatarNome(itemContatoSelecionado.aluno?.nome) }}
                         </p>
                         <p class="text-xs text-muted-foreground truncate">
-                            {{ itemContatoSelecionado.curso?.nome }} • 
+                            {{ itemContatoSelecionado.curso?.nome }} •
                             <span class="text-rose-600 dark:text-rose-400 font-medium">{{ itemContatoSelecionado.diasAusente }} dias sem presença</span>
                         </p>
                     </div>
                 </div>
 
-                <!-- Nova Observação -->
+                <!-- Nova Observacao -->
                 <FormGroup label="Nova Observação de Contato (Opcional)" id="obs-contato">
-                    <textarea 
+                    <textarea
                         id="obs-contato"
-                        v-model="observacaoContato" 
+                        v-model="observacaoContato"
                         rows="3"
                         placeholder="Descreva o motivo da ausência ou resultado da ligação..."
                         class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                     ></textarea>
                 </FormGroup>
 
-                <!-- Histórico de Contatos Anteriores -->
+                <!-- Historico de Contatos Anteriores -->
                 <div v-if="itemContatoSelecionado.historicoContatos?.length > 0" class="space-y-2 pt-2 border-t border-border">
                     <h4 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                         <MessageSquare class="w-3.5 h-3.5" />
@@ -621,13 +710,13 @@
                     </h4>
 
                     <div class="max-h-52 overflow-y-auto space-y-2.5 pr-1">
-                        <div 
-                            v-for="reg in itemContatoSelecionado.historicoContatos" 
+                        <div
+                            v-for="reg in itemContatoSelecionado.historicoContatos"
                             :key="reg.id"
                             class="p-3 rounded-md bg-muted border border-border text-xs space-y-1"
                         >
                             <div class="flex items-center justify-between text-muted-foreground font-semibold border-b border-border pb-1">
-                                <div class="">
+                                <div>
                                     <span>Contato realizado</span>
                                     <span v-if="reg.usuario_nome" class="text-[11px] text-muted-foreground"> - {{ formatarNome(reg.usuario_nome) }}</span>
                                 </div>
@@ -653,11 +742,11 @@
             </template>
         </Modal>
 
-        <!-- Modal de Conclusão -->
-        <ModalConcluirAluno 
-            v-model="modalConcluirAberto" 
-            :matricula="matriculaParaConcluir" 
-            @concluido="carregarDadosGlobais(true)" 
+        <!-- Modal de Conclusao -->
+        <ModalConcluirAluno
+            v-model="modalConcluirAberto"
+            :matricula="matriculaParaConcluir"
+            @concluido="carregarDadosGlobais(true)"
         />
     </div>
 </template>

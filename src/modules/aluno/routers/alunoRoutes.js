@@ -6,20 +6,25 @@ export default [
         children: [
             {
                 path: 'painel',
-                component: () => import('@/modules/aluno/Painel.vue'),
+                component: () => import('@/modules/aluno/Painel.vue')
             },
             {
                 path: 'atividades',
-                component: () => import('@/modules/aluno/views/Atividades.vue'),
+                component: () => import('@/modules/aluno/views/Atividades.vue')
+            },
+            {
+                path: 'atividades/:cursoId/:moduloId',
+                component: () => import('@/modules/aluno/views/ModuloAtividades.vue'),
+                meta: { breadcrumb: 'Módulo' }
             },
             {
                 path: 'apostilas',
-                component: () => import('@/modules/aluno/views/Apostilas.vue'),
+                component: () => import('@/modules/aluno/views/Apostilas.vue')
             },
             {
                 path: 'auxiliares',
-                component: () => import('@/modules/aluno/views/Auxiliares.vue'),
-            },
-        ],
-    },
-]
+                component: () => import('@/modules/aluno/views/Auxiliares.vue')
+            }
+        ]
+    }
+];

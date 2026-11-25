@@ -1,14 +1,16 @@
 import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
-import { parseData, getUltimaPresenca } from '@/utils/dateHelpers';
+import { parseData, getUltimaPresenca, getHojeString } from '@/utils/dateHelpers';
+
+export const META_CONTATOS_DIA = 5;
 
 const matriculas = ref([]);
 const carregando = ref(false);
 let dadosJaCarregados = false;
-let escutandoEventos = false; // Evita criar ouvintes duplicados
+let escutandoEventos = false;
+let handlerRecarregarSilencioso = null;
 
 export function usePendencias() {
-
     const carregarDadosGlobais = async (forcarAtualizacao = false) => {
         if (dadosJaCarregados && !forcarAtualizacao) return;
 
@@ -26,26 +28,20 @@ export function usePendencias() {
                 .in('situacao', ['cursando', 'concluido']);
 
             if (error) throw error;
-            
+
             matriculas.value = data || [];
             dadosJaCarregados = true;
 
-            // ========================================================
-            // AQUI ESTÁ A MAGIA: O SINO COMEÇA A OUVIR O MAESTRO
-            // ========================================================
             if (!escutandoEventos) {
                 escutandoEventos = true;
-                
-                // Função que manda recarregar os dados em segundo plano
-                const recarregarSilencioso = () => carregarDadosGlobais(true);
-                
-                document.addEventListener('db-update-matricula', recarregarSilencioso);
-                document.addEventListener('db-update-presenca', recarregarSilencioso);
-                document.addEventListener('db-update-contato', recarregarSilencioso);
-            }
+                handlerRecarregarSilencioso = () => carregarDadosGlobais(true);
 
+                document.addEventListener('db-update-matricula', handlerRecarregarSilencioso);
+                document.addEventListener('db-update-presenca', handlerRecarregarSilencioso);
+                document.addEventListener('db-update-contato', handlerRecarregarSilencioso);
+            }
         } catch (err) {
-            console.error("Erro ao carregar pendências globais:", err);
+            console.error('Erro ao carregar pendências globais:', err);
         } finally {
             carregando.value = false;
         }
@@ -54,20 +50,17 @@ export function usePendencias() {
     const limparDadosGlobais = () => {
         matriculas.value = [];
         dadosJaCarregados = false;
-        
-        // Remove os ouvintes ao sair
-        if (escutandoEventos) {
-            const recarregarSilencioso = () => carregarDadosGlobais(true);
-            document.removeEventListener('db-update-matricula', recarregarSilencioso);
-            document.removeEventListener('db-update-presenca', recarregarSilencioso);
-            document.removeEventListener('db-update-contato', recarregarSilencioso);
+
+        if (escutandoEventos && handlerRecarregarSilencioso) {
+            document.removeEventListener('db-update-matricula', handlerRecarregarSilencioso);
+            document.removeEventListener('db-update-presenca', handlerRecarregarSilencioso);
+            document.removeEventListener('db-update-contato', handlerRecarregarSilencioso);
+            handlerRecarregarSilencioso = null;
             escutandoEventos = false;
         }
     };
 
-    // ... [O RESTO DO SEU FICHEIRO CONTINUA AQUI PARA BAIXO] ...
-
-    // Funções utilitárias de data internas
+    // Funcoes utilitarias de data internas
     const calcularDiferencaDias = (dateStr) => {
         if (!dateStr) return null;
         const data = parseData(dateStr);
@@ -127,6 +120,16 @@ export function usePendencias() {
             .sort((a, b) => b.diasAusente - a.diasAusente);
     });
 
+    // Faltantes que precisam de ligacao agora (sem contato ou rechamada)
+    const faltantesAcaoImediata = computed(() => {
+        return listaFaltantes.value.filter(item => item.statusContato !== 'aguardando');
+    });
+
+    // Faltantes criticos (+30 dias sem vir e sem contato recente)
+    const faltantesCriticos = computed(() => {
+        return faltantesAcaoImediata.value.filter(item => item.diasAusente >= 30);
+    });
+
     // 2. Fila de Reta Final (<= 30 dias)
     const listaPrazos = computed(() => {
         return matriculas.value
@@ -157,14 +160,45 @@ export function usePendencias() {
         return matriculas.value.filter(m => m.situacao === 'cursando').length;
     });
 
+    // 5. Meta diaria de contatos registrados hoje (turno geral da secretaria)
+    const contatosHoje = computed(() => {
+        const hoje = getHojeString();
+        const idsUnicos = new Set();
+
+        matriculas.value.forEach(m => {
+            (m.registro_contato || []).forEach(reg => {
+                if (reg.data_contato === hoje && reg.id) {
+                    idsUnicos.add(reg.id);
+                }
+            });
+        });
+
+        return idsUnicos.size;
+    });
+
+    const progressoMetaDiaria = computed(() => {
+        if (META_CONTATOS_DIA <= 0) return 100;
+        return Math.min(100, Math.round((contatosHoje.value / META_CONTATOS_DIA) * 100));
+    });
+
+    const metaDiariaAtingida = computed(() => {
+        return contatosHoje.value >= META_CONTATOS_DIA;
+    });
+
     return {
         matriculas,
         carregando,
         carregarDadosGlobais,
         limparDadosGlobais,
         listaFaltantes,
+        faltantesAcaoImediata,
+        faltantesCriticos,
         listaPrazos,
         listaCertificados,
-        totalCursando
+        totalCursando,
+        contatosHoje,
+        metaContatosDia: META_CONTATOS_DIA,
+        progressoMetaDiaria,
+        metaDiariaAtingida
     };
 }

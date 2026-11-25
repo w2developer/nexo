@@ -15,7 +15,12 @@
 
     const isOpen = ref(false);
     const hasChildren = computed(() => Boolean(props.item.children?.length));
-    const isActive = computed(() => route.path === props.item.to);
+
+    const isActive = computed(() => {
+        if (!props.item.to) return false;
+        if (route.path === props.item.to) return true;
+        return props.item.to !== '/' && route.path.startsWith(`${props.item.to}/`);
+    });
 
     const badgeFormatado = computed(() => {
         const valor = props.item.badge;
