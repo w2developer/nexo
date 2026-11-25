@@ -86,7 +86,7 @@
             <Navbar />
         </template>
 
-        <div class="mx-auto w-full max-w-6xl px-3 py-4 pb-24 sm:px-6 lg:py-6 lg:pb-12">
+        <div class="mx-auto p-4 pb-24">
             <RouterView />
         </div>
 

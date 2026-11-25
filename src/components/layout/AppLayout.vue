@@ -66,7 +66,7 @@
 
             <!-- Area rolavel do conteudo -->
             <main ref="mainContent" class="flex-1 overflow-y-auto outline-none" tabindex="-1">
-                <slot></slot>
+                <slot></slot> 
             </main>
         </div>
 
