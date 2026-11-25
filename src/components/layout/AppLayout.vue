@@ -1,57 +1,57 @@
 <script setup>
-import { ref, provide, watch, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import Toaster from '../ui/Toaster.vue'
+    import { ref, toRef, provide, watch, onUnmounted, nextTick } from 'vue';
+    import { useRoute } from 'vue-router';
+    import Toaster from '../ui/Toaster.vue';
 
-const props = defineProps({
-    navigation: {
-        type: Array,
-        default: () => [],
-    },
-})
-
-const route = useRoute()
-
-// Referência da tag <main> que controla o scroll
-const mainContent = ref(null)
-
-// Estado do menu mobile
-const isMobileOpen = ref(false)
-
-const toggleMobile = () => {
-    isMobileOpen.value = !isMobileOpen.value
-}
-
-// Volta o scroll para o topo (e fecha o menu mobile) ao mudar de rota
-watch(
-    () => route.fullPath,
-    async () => {
-        isMobileOpen.value = false
-        await nextTick()
-        if (mainContent.value) {
-            mainContent.value.scrollTop = 0
+    const props = defineProps({
+        navigation: {
+            type: Array,
+            default: () => []
         }
-    }
-)
+    });
 
-// Bloqueia scroll quando menu mobile estiver aberto
-watch(isMobileOpen, (val) => {
-    if (val) {
-        document.body.style.overflow = 'hidden'
-    } else {
-        document.body.style.overflow = ''
-    }
-})
+    const route = useRoute();
 
-// Previne travamento de scroll caso o layout seja destruído
-onUnmounted(() => {
-    document.body.style.overflow = ''
-})
+    // Referencia da tag <main> que controla o scroll
+    const mainContent = ref(null);
 
-// Compartilha os dados com a Navbar e Sidebar filhas
-provide('navigation', props.navigation)
-provide('isMobileOpen', isMobileOpen)
-provide('toggleMobile', toggleMobile)
+    // Estado do menu mobile
+    const isMobileOpen = ref(false);
+
+    const toggleMobile = () => {
+        isMobileOpen.value = !isMobileOpen.value;
+    };
+
+    // Volta o scroll para o topo (e fecha o menu mobile) ao mudar de rota
+    watch(
+        () => route.fullPath,
+        async () => {
+            isMobileOpen.value = false;
+            await nextTick();
+            if (mainContent.value) {
+                mainContent.value.scrollTop = 0;
+            }
+        }
+    );
+
+    // Bloqueia scroll quando menu mobile estiver aberto
+    watch(isMobileOpen, (val) => {
+        if (val) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Previne travamento de scroll caso o layout seja destruido
+    onUnmounted(() => {
+        document.body.style.overflow = '';
+    });
+
+    // Compartilha os dados reativamente com a Navbar e Sidebar filhas
+    provide('navigation', toRef(props, 'navigation'));
+    provide('isMobileOpen', isMobileOpen);
+    provide('toggleMobile', toggleMobile);
 </script>
 
 <template>
@@ -59,12 +59,12 @@ provide('toggleMobile', toggleMobile)
         <!-- Slot da Sidebar -->
         <slot name="sidebar"></slot>
 
-        <!-- Coluna Principal (Navbar + Conteúdo) -->
+        <!-- Coluna Principal (Navbar + Conteudo) -->
         <div class="flex flex-col flex-1 overflow-hidden w-full">
             <!-- Slot da Navbar -->
             <slot name="navbar"></slot>
 
-            <!-- Área rolável do conteúdo com a ref adicionada -->
+            <!-- Area rolavel do conteudo -->
             <main ref="mainContent" class="flex-1 overflow-y-auto outline-none" tabindex="-1">
                 <slot></slot>
             </main>
@@ -77,7 +77,7 @@ provide('toggleMobile', toggleMobile)
             @click="toggleMobile"
         ></div>
 
-        <!-- Componente de notificações global -->
+        <!-- Componente de notificacoes global -->
         <Toaster />
     </div>
 </template>

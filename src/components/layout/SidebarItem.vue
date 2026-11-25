@@ -1,77 +1,107 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { ChevronDown } from '@lucide/vue'
-import { cn } from '../../utils/cn'
+    import { ref, computed, inject } from 'vue';
+    import { useRoute } from 'vue-router';
+    import { ChevronDown } from '@lucide/vue';
+    import { cn } from '../../utils/cn';
 
-const props = defineProps({
-    item: {
-        type: Object,
-        required: true,
-    },
-})
+    const props = defineProps({
+        item: {
+            type: Object,
+            required: true
+        }
+    });
 
-const route = useRoute()
+    const route = useRoute();
 
-// Controle de estado do submenu
-const isOpen = ref(false)
-const hasChildren = computed(() => !!props.item.children?.length)
+    const isOpen = ref(false);
+    const hasChildren = computed(() => Boolean(props.item.children?.length));
+    const isActive = computed(() => route.path === props.item.to);
 
-// Verifica rota ativa dinamicamente pelo Vue Router
-const isActive = computed(() => route.path === props.item.to)
+    const badgeFormatado = computed(() => {
+        const valor = props.item.badge;
+        if (typeof valor === 'number') {
+            if (valor <= 0) return null;
+            return valor > 99 ? '99+' : String(valor);
+        }
+        if (typeof valor === 'string' && valor.trim()) {
+            return valor.trim();
+        }
+        return null;
+    });
 
-// Fechar sidebar no mobile após o clique
-import { inject } from 'vue'
-const isMobileOpen = inject('isMobileOpen', null)
-const closeMobile = () => {
-    if (isMobileOpen && isMobileOpen.value) {
-        isMobileOpen.value = false
-    }
-}
+    const isMobileOpen = inject('isMobileOpen', null);
+    const closeMobile = () => {
+        if (isMobileOpen && isMobileOpen.value) {
+            isMobileOpen.value = false;
+        }
+    };
 </script>
 
 <template>
     <li class="list-none">
-        <!-- Renderiza como botão se tiver filhos (Submenu) -->
+        <!-- Renderiza como botao se tiver filhos (Submenu) -->
         <button
             v-if="hasChildren"
             @click="isOpen = !isOpen"
-            class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground text-muted-foreground"
+            class="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground text-muted-foreground cursor-pointer"
         >
-            <div class="flex items-center gap-3">
-                <component :is="item.icon" v-if="item.icon" class="h-4 w-4" />
-                <span>{{ item.title }}</span>
+            <div class="flex items-center gap-3 min-w-0">
+                <component :is="item.icon" v-if="item.icon" class="h-4 w-4 shrink-0" />
+                <span class="truncate">{{ item.title }}</span>
             </div>
             <ChevronDown
-                :class="cn('h-4 w-4 transition-transform duration-200', isOpen && 'rotate-180')"
+                :class="cn('h-4 w-4 shrink-0 transition-transform duration-200', isOpen && 'rotate-180')"
             />
         </button>
 
-        <!-- Renderiza como link se não tiver filhos -->
+        <!-- Renderiza como link se nao tiver filhos -->
         <router-link
             v-else
             :to="item.to"
             @click="closeMobile"
             :class="
                 cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )
             "
         >
-            <component :is="item.icon" v-if="item.icon" class="h-4 w-4" />
-            <span>{{ item.title }}</span>
+            <div class="flex items-center gap-3 min-w-0">
+                <component :is="item.icon" v-if="item.icon" class="h-4 w-4 shrink-0" />
+                <span class="truncate">{{ item.title }}</span>
+            </div>
+
+            <!-- Contador e indicador de aviso -->
+            <span
+                v-if="badgeFormatado"
+                class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums leading-none shrink-0"
+                :class="
+                    item.badgeAlert
+                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/25'
+                        : 'bg-muted text-muted-foreground'
+                "
+                :title="item.badgeTitle || ''"
+            >
+                <span
+                    v-if="item.badgeAlert"
+                    class="relative flex h-1.5 w-1.5 shrink-0"
+                >
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+                </span>
+                {{ badgeFormatado }}
+            </span>
         </router-link>
 
-        <!-- Conteúdo do Submenu animado com CSS Grid -->
+        <!-- Conteudo do Submenu animado com CSS Grid -->
         <div
             v-if="hasChildren"
             :class="
                 cn(
                     'grid transition-all duration-300 ease-in-out',
-                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                 )
             "
         >
@@ -86,7 +116,7 @@ const closeMobile = () => {
                                     'block rounded-md px-3 py-2 text-sm font-medium transition-colors',
                                     route.path === child.to
                                         ? 'text-primary font-semibold'
-                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 )
                             "
                         >
