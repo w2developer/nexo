@@ -9,8 +9,6 @@
         AlertCircle,
         ChevronRight,
         GraduationCap,
-        FileText,
-        FolderOpen,
         Award,
         Loader2
     } from '@lucide/vue';
@@ -20,20 +18,20 @@
     import Card from '@/components/ui/Card.vue';
     import CardContent from '@/components/ui/CardContent.vue';
     import Button from '@/components/ui/Button.vue';
+    import RankingCard from './components/RankingCard.vue';
 
     const router = useRouter();
     const { alunoId, primeiroNome, carregarSessaoAluno } = useAlunoSessao();
 
     const carregando = ref(true);
     const erroCarregamento = ref('');
+    const rankingVersao = ref(0);
 
     const matriculasBrutas = ref([]);
     const cursosMatriculados = ref([]);
     const cursoModulos = ref([]);
     const atividades = ref([]);
     const historicoAluno = ref([]);
-    const totalApostilas = ref(0);
-    const totalAuxiliares = ref(0);
 
     let realtimeChannel = null;
     let realtimeTimer = null;
@@ -131,7 +129,6 @@
         return total;
     });
 
-    // Atividades que exigem acao ou estao aguardando confirmacao
     const pendenciasAtividades = computed(() => {
         const itens = [];
 
@@ -162,7 +159,6 @@
             });
         });
 
-        // Ajustes primeiro, depois aguardando (mais recentes no topo)
         return itens.sort((a, b) => {
             if (a.tipo !== b.tipo) return a.tipo === 'ajustar' ? -1 : 1;
             return b.referenciaTempo.localeCompare(a.referenciaTempo);
@@ -195,15 +191,10 @@
 
             const totalAtividades = idsAtividades.size;
             let concluidas = 0;
-            let ajustar = 0;
-            let aguardando = 0;
 
             idsAtividades.forEach(id => {
                 const est = mapaEstadoPorAtividade.value.get(id);
-                if (!est) return;
-                if (est.concluida) concluidas += 1;
-                if (est.ajustar) ajustar += 1;
-                if (est.aguardando) aguardando += 1;
+                if (est?.concluida) concluidas += 1;
             });
 
             const percentual = totalAtividades > 0
@@ -214,8 +205,6 @@
                 ...curso,
                 totalAtividades,
                 concluidas,
-                ajustar,
-                aguardando,
                 percentual
             };
         });
@@ -230,7 +219,7 @@
             ? cursosEmAndamento.value
             : cursosComProgresso.value;
 
-        return base.slice(0, 6);
+        return base.slice(0, 4);
     });
 
     const temMaisCursos = computed(() => {
@@ -277,7 +266,7 @@
                 return;
             }
 
-            const [resMatriculas, resHistorico, resAuxiliares] = await Promise.all([
+            const [resMatriculas, resHistorico] = await Promise.all([
                 supabase
                     .from('matricula')
                     .select('id, curso_id, situacao, situacao_certificado, curso:curso_id ( id, nome )')
@@ -289,19 +278,14 @@
                     .select(
                         'id, atividade_id, matricula_id, status, pontos_ganhos, observacao_professor, solicitada_em, criado_em, atualizado_em'
                     )
-                    .eq('aluno_id', alunoId.value),
-                supabase
-                    .from('arquivo_auxiliar')
-                    .select('id', { count: 'exact', head: true })
+                    .eq('aluno_id', alunoId.value)
             ]);
 
             if (resMatriculas.error) throw resMatriculas.error;
             if (resHistorico.error) throw resHistorico.error;
-            if (resAuxiliares.error) throw resAuxiliares.error;
 
             matriculasBrutas.value = resMatriculas.data || [];
             historicoAluno.value = resHistorico.data || [];
-            totalAuxiliares.value = resAuxiliares.count || 0;
 
             const mapaCursos = new Map();
             matriculasBrutas.value.forEach(mat => {
@@ -329,26 +313,16 @@
             if (idsCursos.length === 0) {
                 cursoModulos.value = [];
                 atividades.value = [];
-                totalApostilas.value = 0;
                 return;
             }
 
-            const [resCM, resApostilas] = await Promise.all([
-                supabase
-                    .from('curso_modulo')
-                    .select('curso_id, modulo_id')
-                    .in('curso_id', idsCursos),
-                supabase
-                    .from('apostila')
-                    .select('id', { count: 'exact', head: true })
-                    .in('curso_id', idsCursos)
-            ]);
+            const { data: dadosCM, error: erroCM } = await supabase
+                .from('curso_modulo')
+                .select('curso_id, modulo_id')
+                .in('curso_id', idsCursos);
 
-            if (resCM.error) throw resCM.error;
-            if (resApostilas.error) throw resApostilas.error;
-
-            cursoModulos.value = resCM.data || [];
-            totalApostilas.value = resApostilas.count || 0;
+            if (erroCM) throw erroCM;
+            cursoModulos.value = dadosCM || [];
 
             const idsModulos = [...new Set(cursoModulos.value.map(cm => cm.modulo_id).filter(Boolean))];
 
@@ -378,6 +352,7 @@
             carregarHistoricoAluno().catch(err =>
                 console.error('Erro ao sincronizar painel em tempo real:', err)
             );
+            rankingVersao.value += 1;
         }, 250);
     };
 
@@ -414,11 +389,28 @@
 
 <template>
     <div class="space-y-6">
-        <!-- Saudacao -->
-        <div>
-            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Olá, {{ primeiroNome }}
-            </h1>
+        <!-- Topo unico e enxuto -->
+        <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+                    Olá, {{ primeiroNome }}
+                </h1>
+                <p v-if="!carregando && !erroCarregamento" class="text-xs sm:text-sm text-muted-foreground mt-0.5 tabular-nums">
+                    {{ totalConcluidasUnicas }}
+                    {{ totalConcluidasUnicas === 1 ? 'atividade concluída' : 'atividades concluídas' }}
+                </p>
+            </div>
+
+            <div
+                v-if="!carregando && !erroCarregamento"
+                class="flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 shrink-0"
+            >
+                <Trophy class="w-4 h-4 text-amber-500 shrink-0" />
+                <span class="text-sm font-bold text-foreground tabular-nums">
+                    {{ pontosTotais }}
+                </span>
+                <span class="text-[11px] font-medium text-muted-foreground">pts</span>
+            </div>
         </div>
 
         <!-- Carregando -->
@@ -440,270 +432,189 @@
             </CardContent>
         </Card>
 
-        <template v-else>
-            <!-- Indicadores Compactos -->
-            <div class="grid grid-cols-3 gap-2.5 sm:gap-4">
-                <div class="rounded-xl border border-border bg-card p-3.5 sm:p-4 shadow-xs">
-                    <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                        <Trophy class="w-4 h-4 shrink-0" />
-                        <span class="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                            Pontos
-                        </span>
+        <!-- Corpo principal em 2 colunas no PC / empilhado no celular -->
+        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- Coluna Principal: Certificados, Atencao e Cursos -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- Certificado pronto para retirada (se existir) -->
+                <div
+                    v-if="certificadosProntos.length > 0"
+                    class="rounded-xl border border-indigo-500/25 bg-indigo-500/8 p-3.5 sm:p-4 flex items-start gap-3"
+                >
+                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shrink-0">
+                        <Award class="w-5 h-5" />
                     </div>
-                    <p class="text-lg sm:text-2xl font-bold text-foreground tabular-nums mt-1.5">
-                        {{ pontosTotais }}
-                    </p>
-                </div>
-
-                <div class="rounded-xl border border-border bg-card p-3.5 sm:p-4 shadow-xs">
-                    <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 class="w-4 h-4 shrink-0" />
-                        <span class="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                            Concluídas
-                        </span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-foreground">
+                            {{
+                                certificadosProntos.length === 1
+                                    ? 'Certificado pronto para retirada'
+                                    : `${certificadosProntos.length} certificados prontos para retirada`
+                            }}
+                        </p>
+                        <p class="text-xs text-muted-foreground mt-0.5 truncate">
+                            {{ certificadosProntos.map(c => c.curso.nome).join(' · ') }}
+                        </p>
                     </div>
-                    <p class="text-lg sm:text-2xl font-bold text-foreground tabular-nums mt-1.5">
-                        {{ totalConcluidasUnicas }}
-                    </p>
                 </div>
 
-                <div class="rounded-xl border border-border bg-card p-3.5 sm:p-4 shadow-xs">
-                    <div class="flex items-center gap-2 text-primary">
-                        <GraduationCap class="w-4 h-4 shrink-0" />
-                        <span class="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                            Em andamento
-                        </span>
-                    </div>
-                    <p class="text-lg sm:text-2xl font-bold text-foreground tabular-nums mt-1.5">
-                        {{ cursosEmAndamento.length }}
-                    </p>
-                </div>
-            </div>
+                <!-- Atividades que precisam de ajuste ou aguardam confirmacao -->
+                <section v-if="pendenciasAtividades.length > 0" class="space-y-2.5">
+                    <h2 class="text-sm font-semibold text-foreground">
+                        Atenção
+                    </h2>
 
-            <!-- Certificado pronto para retirada (se existir) -->
-            <div
-                v-if="certificadosProntos.length > 0"
-                class="rounded-xl border border-indigo-500/25 bg-indigo-500/8 p-3.5 sm:p-4 flex items-start gap-3"
-            >
-                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <Award class="w-5 h-5" />
-                </div>
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold text-foreground">
-                        {{
-                            certificadosProntos.length === 1
-                                ? 'Certificado pronto para retirada'
-                                : `${certificadosProntos.length} certificados prontos para retirada`
-                        }}
-                    </p>
-                    <p class="text-xs text-muted-foreground mt-0.5 truncate">
-                        {{ certificadosProntos.map(c => c.curso.nome).join(' · ') }}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Atividades pendentes de ajuste ou aguardando validacao -->
-            <section v-if="pendenciasAtividades.length > 0" class="space-y-2.5">
-                <h2 class="text-sm font-semibold text-foreground">
-                    Atenção
-                </h2>
-
-                <Card class="overflow-hidden">
-                    <div class="divide-y divide-border">
-                        <button
-                            v-for="item in pendenciasAtividades"
-                            :key="item.id"
-                            type="button"
-                            @click="abrirAtividade(item)"
-                            class="group w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-muted/40 transition-colors cursor-pointer"
-                        >
-                            <div
-                                class="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
-                                :class="
-                                    item.tipo === 'ajustar'
-                                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                                "
+                    <Card class="overflow-hidden">
+                        <div class="divide-y divide-border">
+                            <button
+                                v-for="item in pendenciasAtividades"
+                                :key="item.id"
+                                type="button"
+                                @click="abrirAtividade(item)"
+                                class="group w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-muted/40 transition-colors cursor-pointer"
                             >
-                                <AlertCircle v-if="item.tipo === 'ajustar'" class="w-4 h-4" />
-                                <Clock v-else class="w-4 h-4" />
-                            </div>
-
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                                    {{ item.nome }}
-                                </p>
-                                <p class="text-xs text-muted-foreground truncate mt-0.5">
-                                    <template v-if="item.tipo === 'ajustar' && item.observacao">
-                                        {{ item.observacao }}
-                                    </template>
-                                    <template v-else>
-                                        {{ item.cursoNome }}
-                                    </template>
-                                </p>
-                            </div>
-
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span
-                                    class="text-xs font-medium"
+                                <div
+                                    class="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
                                     :class="
                                         item.tipo === 'ajustar'
-                                            ? 'text-rose-600 dark:text-rose-400'
-                                            : 'text-amber-700 dark:text-amber-400'
+                                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                                            : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
                                     "
                                 >
-                                    {{ item.tipo === 'ajustar' ? 'Ajustar' : 'Aguardando' }}
-                                </span>
-                                <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                                    <AlertCircle v-if="item.tipo === 'ajustar'" class="w-4 h-4" />
+                                    <Clock v-else class="w-4 h-4" />
+                                </div>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                        {{ item.nome }}
+                                    </p>
+                                    <p class="text-xs text-muted-foreground truncate mt-0.5">
+                                        <template v-if="item.tipo === 'ajustar' && item.observacao">
+                                            {{ item.observacao }}
+                                        </template>
+                                        <template v-else>
+                                            {{ item.cursoNome }}
+                                        </template>
+                                    </p>
+                                </div>
+
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span
+                                        class="text-xs font-medium"
+                                        :class="
+                                            item.tipo === 'ajustar'
+                                                ? 'text-rose-600 dark:text-rose-400'
+                                                : 'text-amber-700 dark:text-amber-400'
+                                        "
+                                    >
+                                        {{ item.tipo === 'ajustar' ? 'Ajustar' : 'Aguardando' }}
+                                    </span>
+                                    <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                                </div>
+                            </button>
+                        </div>
+                    </Card>
+                </section>
+
+                <!-- Cursos em andamento -->
+                <section class="space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="text-sm font-semibold text-foreground">
+                            {{ tituloSecaoCursos }}
+                        </h2>
+
+                        <button
+                            v-if="temMaisCursos"
+                            type="button"
+                            @click="router.push('/aluno/atividades')"
+                            class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
+                        >
+                            <span>Ver todos ({{ cursosComProgresso.length }})</span>
+                            <ChevronRight class="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    <Card v-if="cursosExibidosPainel.length === 0">
+                        <CardContent class="p-8 text-center space-y-2 text-muted-foreground">
+                            <GraduationCap class="w-8 h-8 mx-auto text-muted-foreground/40" />
+                            <p class="text-sm font-medium text-foreground">Nenhum curso disponível.</p>
+                        </CardContent>
+                    </Card>
+
+                    <div
+                        v-else
+                        class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
+                    >
+                        <button
+                            v-for="curso in cursosExibidosPainel"
+                            :key="curso.curso_id"
+                            type="button"
+                            @click="abrirCurso(curso.curso_id)"
+                            class="group flex flex-col rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99] cursor-pointer"
+                        >
+                            <div class="flex items-start justify-between gap-3 w-full min-h-[44px]">
+                                <div class="flex items-start gap-3 min-w-0">
+                                    <div
+                                        class="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+                                        :class="
+                                            curso.totalAtividades > 0 && curso.percentual === 100
+                                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                                : 'bg-primary/10 text-primary'
+                                        "
+                                    >
+                                        <CheckCircle2
+                                            v-if="curso.totalAtividades > 0 && curso.percentual === 100"
+                                            class="w-4 h-4"
+                                        />
+                                        <GraduationCap v-else class="w-4 h-4" />
+                                    </div>
+
+                                    <div class="min-w-0">
+                                        <h3 class="font-bold text-sm sm:text-[15px] text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                                            {{ curso.nome }}
+                                        </h3>
+                                    </div>
+                                </div>
+
+                                <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-border/70 space-y-2 w-full">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-muted-foreground tabular-nums">
+                                        {{ curso.concluidas }}/{{ curso.totalAtividades }} atividades
+                                    </span>
+                                    <span class="font-bold text-foreground tabular-nums">
+                                        {{ curso.percentual }}%
+                                    </span>
+                                </div>
+
+                                <div class="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        class="h-full rounded-full transition-all duration-300"
+                                        :class="
+                                            curso.totalAtividades > 0 && curso.percentual === 100
+                                                ? 'bg-emerald-500'
+                                                : 'bg-primary'
+                                        "
+                                        :style="{ width: `${curso.percentual}%` }"
+                                    ></div>
+                                </div>
                             </div>
                         </button>
                     </div>
-                </Card>
-            </section>
+                </section>
+            </div>
 
-            <!-- Cursos em andamento -->
-            <section class="space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                    <h2 class="text-sm font-semibold text-foreground">
-                        {{ tituloSecaoCursos }}
-                    </h2>
-
-                    <button
-                        v-if="temMaisCursos"
-                        type="button"
-                        @click="router.push('/aluno/atividades')"
-                        class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
-                    >
-                        <span>Ver todos ({{ cursosComProgresso.length }})</span>
-                        <ChevronRight class="w-3.5 h-3.5" />
-                    </button>
-                </div>
-
-                <Card v-if="cursosExibidosPainel.length === 0">
-                    <CardContent class="p-8 text-center space-y-2 text-muted-foreground">
-                        <GraduationCap class="w-8 h-8 mx-auto text-muted-foreground/40" />
-                        <p class="text-sm font-medium text-foreground">Nenhum curso disponível.</p>
-                    </CardContent>
-                </Card>
-
-                <div
-                    v-else
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-                >
-                    <button
-                        v-for="curso in cursosExibidosPainel"
-                        :key="curso.curso_id"
-                        type="button"
-                        @click="abrirCurso(curso.curso_id)"
-                        class="group flex flex-col rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99] cursor-pointer"
-                    >
-                        <div class="flex items-start justify-between gap-3 w-full min-h-[44px]">
-                            <div class="flex items-start gap-3 min-w-0">
-                                <div
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-                                    :class="
-                                        curso.totalAtividades > 0 && curso.percentual === 100
-                                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                            : 'bg-primary/10 text-primary'
-                                    "
-                                >
-                                    <CheckCircle2
-                                        v-if="curso.totalAtividades > 0 && curso.percentual === 100"
-                                        class="w-4 h-4"
-                                    />
-                                    <GraduationCap v-else class="w-4 h-4" />
-                                </div>
-
-                                <div class="min-w-0">
-                                    <h3 class="font-bold text-sm sm:text-[15px] text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-                                        {{ curso.nome }}
-                                    </h3>
-                                </div>
-                            </div>
-
-                            <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
-                        </div>
-
-                        <div class="mt-4 pt-3 border-t border-border/70 space-y-2 w-full">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-muted-foreground tabular-nums">
-                                    {{ curso.concluidas }}/{{ curso.totalAtividades }} atividades
-                                </span>
-                                <span class="font-bold text-foreground tabular-nums">
-                                    {{ curso.percentual }}%
-                                </span>
-                            </div>
-
-                            <div class="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                <div
-                                    class="h-full rounded-full transition-all duration-300"
-                                    :class="
-                                        curso.totalAtividades > 0 && curso.percentual === 100
-                                            ? 'bg-emerald-500'
-                                            : 'bg-primary'
-                                    "
-                                    :style="{ width: `${curso.percentual}%` }"
-                                ></div>
-                            </div>
-                        </div>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Acesso rapido a Materiais -->
-            <section class="space-y-2.5">
+            <!-- Coluna Lateral: Ranking (largura compacta no PC / empilhado abaixo no celular) -->
+            <section class="lg:col-span-4 space-y-2.5">
                 <h2 class="text-sm font-semibold text-foreground">
-                    Materiais
+                    Ranking
                 </h2>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                        type="button"
-                        @click="router.push('/aluno/apostilas')"
-                        class="group flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99] cursor-pointer"
-                    >
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                                <FileText class="w-5 h-5" />
-                            </div>
-                            <div class="min-w-0">
-                                <p class="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
-                                    Apostilas
-                                </p>
-                                <p class="text-xs text-muted-foreground tabular-nums">
-                                    {{ totalApostilas }}
-                                    {{ totalApostilas === 1 ? 'disponível' : 'disponíveis' }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors shrink-0" />
-                    </button>
-
-                    <button
-                        type="button"
-                        @click="router.push('/aluno/auxiliares')"
-                        class="group flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99] cursor-pointer"
-                    >
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                                <FolderOpen class="w-5 h-5" />
-                            </div>
-                            <div class="min-w-0">
-                                <p class="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
-                                    Auxiliares
-                                </p>
-                                <p class="text-xs text-muted-foreground tabular-nums">
-                                    {{ totalAuxiliares }}
-                                    {{ totalAuxiliares === 1 ? 'arquivo' : 'arquivos' }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <ChevronRight class="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors shrink-0" />
-                    </button>
-                </div>
+                <RankingCard :atualizacao-key="rankingVersao" :limite="5" />
             </section>
-        </template>
+        </div>
     </div>
 </template>
