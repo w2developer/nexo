@@ -1,8 +1,23 @@
 <script setup>
     import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
     import { supabase } from '@/lib/supabase';
-    import { Plus, Search, Menu, Pencil, Trash2, Loader2, ChevronRight, Image as ImageIcon } from '@lucide/vue';
+    import {
+        Plus,
+        Search,
+        Menu,
+        Pencil,
+        Trash2,
+        Loader2,
+        ChevronRight,
+        Image as ImageIcon
+    } from '@lucide/vue';
     import { toast } from '@/composables/useToast';
+    import {
+        ordenarPorOrdemENome,
+        moverItemNaLista,
+        posicionarItemPorNumero,
+        calcularNormalizacaoOrdem
+    } from '../utils/ordenacao';
 
     import Card from '@/components/ui/Card.vue';
     import CardContent from '@/components/ui/CardContent.vue';
@@ -13,6 +28,8 @@
     import FormGroup from '@/components/ui/FormGroup.vue';
     import Dropdown from '@/components/ui/Dropdown.vue';
     import Modal from '@/components/ui/Modal.vue';
+    import ControleOrdem from './ControleOrdem.vue';
+    import BotaoCanalLink from './BotaoCanalLink.vue';
 
     const emit = defineEmits(['update-total']);
 
@@ -23,16 +40,24 @@
     const carregando = ref(true);
     const salvando = ref(false);
     const excluindo = ref(false);
+    const reordenando = ref(false);
     const cursoExpandido = ref(null);
     const miniaturasComErro = ref(new Set());
     let realtimeChannel = null;
+    let realtimeTimer = null;
+
+    // Estados de Drag & Drop (isolados por grupo de curso)
+    const dragOrigem = ref(null);
+    const dragAlvo = ref(null);
 
     const modalFormularioAberto = ref(false);
     const editandoId = ref(null);
+    const cursoOriginalEdicao = ref('sem_curso');
     const erroPreviewMiniatura = ref(false);
     const form = ref({
         curso_id: '',
         nome: '',
+        ordem: '1',
         miniatura_url: '',
         drive_url: '',
         mega_url: '',
@@ -54,6 +79,16 @@
         }
     );
 
+    const getChaveCurso = (cursoId) => {
+        return cursoId ? String(cursoId) : 'sem_curso';
+    };
+
+    const obterApostilasDoGrupo = (chaveCurso) => {
+        return ordenarPorOrdemENome(
+            apostilas.value.filter(item => getChaveCurso(item.curso_id) === chaveCurso)
+        );
+    };
+
     const opcoesFiltroCurso = computed(() => [
         { label: 'Todos os cursos', value: 'todos' },
         ...cursos.value.map(c => ({ label: c.nome, value: String(c.id) })),
@@ -71,7 +106,7 @@
         const gruposMap = new Map();
 
         apostilas.value.forEach(item => {
-            const chaveCurso = item.curso_id ? String(item.curso_id) : 'sem_curso';
+            const chaveCurso = getChaveCurso(item.curso_id);
             const nomeCurso = item.curso_id
                 ? (mapaCursos.get(item.curso_id) || 'Curso desconhecido')
                 : 'Sem curso vinculado';
@@ -103,7 +138,7 @@
         const listaGrupos = Array.from(gruposMap.values());
 
         listaGrupos.forEach(grupo => {
-            grupo.itens.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+            grupo.itens = ordenarPorOrdemENome(grupo.itens);
         });
 
         return listaGrupos.sort((a, b) => {
@@ -122,6 +157,10 @@
 
     const toggleGrupoCurso = (grupoId) => {
         cursoExpandido.value = cursoExpandido.value === grupoId ? null : grupoId;
+    };
+
+    const podeReordenarGrupo = (grupo) => {
+        return !termoPesquisa.value.trim() && !reordenando.value && grupo.itens.length > 1;
     };
 
     const validarUrl = (valor) => {
@@ -148,6 +187,34 @@
         miniaturasComErro.value = novoSet;
     };
 
+    const persistirAlteracoesOrdem = async (alteracoes) => {
+        if (!alteracoes.length) return;
+
+        const resultados = await Promise.all(
+            alteracoes.map(({ id, ordem }) =>
+                supabase
+                    .from('apostila')
+                    .update({ ordem })
+                    .eq('id', id)
+            )
+        );
+
+        const erro = resultados.find(res => res.error)?.error;
+        if (erro) throw erro;
+    };
+
+    const substituirGruposLocalmente = (chavesAfetadas, novosItens) => {
+        const conjuntoChaves = new Set(chavesAfetadas);
+        const restantes = apostilas.value.filter(
+            item => !conjuntoChaves.has(getChaveCurso(item.curso_id))
+        );
+        apostilas.value = [...restantes, ...novosItens];
+    };
+
+    // ========================================================
+    // CARREGAMENTO DE DADOS
+    // ========================================================
+
     const carregarCursos = async () => {
         try {
             const { data, error } = await supabase
@@ -169,7 +236,8 @@
         try {
             const { data, error } = await supabase
                 .from('apostila')
-                .select('id, curso_id, nome, miniatura_url, drive_url, mega_url, outro_url')
+                .select('id, curso_id, nome, ordem, miniatura_url, drive_url, mega_url, outro_url')
+                .order('ordem', { ascending: true })
                 .order('nome', { ascending: true });
 
             if (error) throw error;
@@ -184,12 +252,121 @@
         }
     };
 
+    const agendarRecarregamentoRealtime = () => {
+        if (reordenando.value || salvando.value || excluindo.value) return;
+
+        clearTimeout(realtimeTimer);
+        realtimeTimer = setTimeout(() => {
+            carregarApostilas(true);
+        }, 250);
+    };
+
+    // ========================================================
+    // REORDENACAO (SETAS E DRAG & DROP POR CURSO)
+    // ========================================================
+
+    const aplicarReordenacao = async (grupoId, indiceOrigem, indiceDestino) => {
+        if (termoPesquisa.value.trim() || reordenando.value || indiceOrigem === indiceDestino) return;
+
+        const itensGrupo = obterApostilasDoGrupo(grupoId);
+        if (itensGrupo.length < 2) return;
+
+        const estadoAnterior = [...apostilas.value];
+        const listaMovida = moverItemNaLista(itensGrupo, indiceOrigem, indiceDestino);
+        const { listaNormalizada, alteracoes } = calcularNormalizacaoOrdem(listaMovida);
+
+        if (!alteracoes.length) return;
+
+        substituirGruposLocalmente([grupoId], listaNormalizada);
+        reordenando.value = true;
+
+        try {
+            await persistirAlteracoesOrdem(alteracoes);
+        } catch (err) {
+            apostilas.value = estadoAnterior;
+            console.error('Erro ao reordenar apostilas:', err);
+            toast.error('Erro', 'Não foi possível salvar a nova ordem.');
+        } finally {
+            reordenando.value = false;
+        }
+    };
+
+    const moverApostila = (grupoId, index, direcao) => {
+        aplicarReordenacao(grupoId, index, index + direcao);
+    };
+
+    const onDragStart = (grupo, index, event) => {
+        if (!podeReordenarGrupo(grupo)) {
+            event.preventDefault();
+            return;
+        }
+
+        dragOrigem.value = { grupoId: grupo.id, index };
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', `${grupo.id}:${index}`);
+        }
+    };
+
+    const onDragOver = (grupoId, index, event) => {
+        if (!dragOrigem.value || dragOrigem.value.grupoId !== grupoId) return;
+
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move';
+        }
+        dragAlvo.value = { grupoId, index };
+    };
+
+    const onDrop = (grupoId, index, event) => {
+        event.preventDefault();
+        const origem = dragOrigem.value;
+        dragOrigem.value = null;
+        dragAlvo.value = null;
+
+        if (origem && origem.grupoId === grupoId && origem.index !== index) {
+            aplicarReordenacao(grupoId, origem.index, index);
+        }
+    };
+
+    const onDragEnd = () => {
+        dragOrigem.value = null;
+        dragAlvo.value = null;
+    };
+
+    // ========================================================
+    // CRUD: APOSTILAS
+    // ========================================================
+
+    const aoTrocarCursoModal = (novoCursoId) => {
+        form.value.curso_id = novoCursoId;
+        const chaveDestino = getChaveCurso(novoCursoId);
+        const itensDestino = obterApostilasDoGrupo(chaveDestino);
+
+        if (editandoId.value && chaveDestino === cursoOriginalEdicao.value) {
+            const indiceAtual = itensDestino.findIndex(item => item.id === editandoId.value);
+            form.value.ordem = String(indiceAtual !== -1 ? indiceAtual + 1 : itensDestino.length);
+        } else {
+            form.value.ordem = String(itensDestino.length + 1);
+        }
+    };
+
     const abrirModalNova = () => {
         editandoId.value = null;
         erroPreviewMiniatura.value = false;
+
+        const cursoInicial =
+            filtroCurso.value !== 'todos' && filtroCurso.value !== 'sem_curso'
+                ? filtroCurso.value
+                : '';
+        const chaveInicial = getChaveCurso(cursoInicial);
+        const itensIniciais = obterApostilasDoGrupo(chaveInicial);
+
+        cursoOriginalEdicao.value = chaveInicial;
         form.value = {
-            curso_id: filtroCurso.value !== 'todos' && filtroCurso.value !== 'sem_curso' ? filtroCurso.value : '',
+            curso_id: cursoInicial,
             nome: '',
+            ordem: String(itensIniciais.length + 1),
             miniatura_url: '',
             drive_url: '',
             mega_url: '',
@@ -201,9 +378,17 @@
     const abrirModalEdicao = (apostila) => {
         editandoId.value = apostila.id;
         erroPreviewMiniatura.value = false;
+
+        const chaveCurso = getChaveCurso(apostila.curso_id);
+        const itensGrupo = obterApostilasDoGrupo(chaveCurso);
+        const indiceAtual = itensGrupo.findIndex(item => item.id === apostila.id);
+        const ordemExibicao = indiceAtual !== -1 ? indiceAtual + 1 : (apostila.ordem || 1);
+
+        cursoOriginalEdicao.value = chaveCurso;
         form.value = {
             curso_id: apostila.curso_id ? String(apostila.curso_id) : '',
             nome: apostila.nome || '',
+            ordem: String(ordemExibicao),
             miniatura_url: apostila.miniatura_url || '',
             drive_url: apostila.drive_url || '',
             mega_url: apostila.mega_url || '',
@@ -221,6 +406,17 @@
         const megaLimpo = form.value.mega_url.trim();
         const outroLimpo = form.value.outro_url.trim();
         const cursoIdFinal = form.value.curso_id ? Number(form.value.curso_id) : null;
+        const chaveDestino = getChaveCurso(cursoIdFinal);
+        const mudouDeCurso = Boolean(editandoId.value && chaveDestino !== cursoOriginalEdicao.value);
+
+        const itensDestinoAtual = obterApostilasDoGrupo(chaveDestino);
+        const totalMaximo = editandoId.value && !mudouDeCurso
+            ? Math.max(1, itensDestinoAtual.length)
+            : itensDestinoAtual.length + 1;
+        const ordemDigitada = Number.parseInt(form.value.ordem, 10);
+        const ordemDesejada = Number.isNaN(ordemDigitada)
+            ? totalMaximo
+            : Math.min(Math.max(1, ordemDigitada), totalMaximo);
 
         if (!nomeLimpo) {
             toast.error('Atenção', 'Informe o nome da apostila.');
@@ -245,6 +441,7 @@
         const payload = {
             curso_id: cursoIdFinal,
             nome: nomeLimpo,
+            ordem: ordemDesejada,
             miniatura_url: miniaturaLimpa || null,
             drive_url: driveLimpo || null,
             mega_url: megaLimpo || null,
@@ -261,14 +458,43 @@
                         atualizado_em: new Date().toISOString()
                     })
                     .eq('id', editandoId.value)
-                    .select('id, curso_id, nome, miniatura_url, drive_url, mega_url, outro_url')
+                    .select('id, curso_id, nome, ordem, miniatura_url, drive_url, mega_url, outro_url')
                     .single();
 
                 if (error) throw error;
 
-                const index = apostilas.value.findIndex(item => item.id === editandoId.value);
-                if (index !== -1 && data) {
-                    apostilas.value[index] = data;
+                if (data) {
+                    if (mudouDeCurso) {
+                        const baseDestino = [...itensDestinoAtual, data];
+                        const destinoReposicionado = posicionarItemPorNumero(baseDestino, data.id, ordemDesejada);
+                        const { listaNormalizada: destinoNorm, alteracoes: altDestino } =
+                            calcularNormalizacaoOrdem(destinoReposicionado);
+
+                        const baseOrigem = obterApostilasDoGrupo(cursoOriginalEdicao.value).filter(
+                            item => item.id !== data.id
+                        );
+                        const { listaNormalizada: origemNorm, alteracoes: altOrigem } =
+                            calcularNormalizacaoOrdem(baseOrigem);
+
+                        await persistirAlteracoesOrdem([...altDestino, ...altOrigem]);
+                        substituirGruposLocalmente(
+                            [cursoOriginalEdicao.value, chaveDestino],
+                            [...origemNorm, ...destinoNorm]
+                        );
+                    } else {
+                        const baseDestino = itensDestinoAtual.map(item =>
+                            item.id === data.id ? data : item
+                        );
+                        const destinoReposicionado = posicionarItemPorNumero(baseDestino, data.id, ordemDesejada);
+                        const { listaNormalizada, alteracoes } = calcularNormalizacaoOrdem(destinoReposicionado);
+
+                        if (alteracoes.length > 0) {
+                            await persistirAlteracoesOrdem(alteracoes);
+                        }
+
+                        substituirGruposLocalmente([chaveDestino], listaNormalizada);
+                    }
+
                     limparErroMiniatura(data.id);
                 }
 
@@ -277,13 +503,21 @@
                 const { data, error } = await supabase
                     .from('apostila')
                     .insert([payload])
-                    .select('id, curso_id, nome, miniatura_url, drive_url, mega_url, outro_url')
+                    .select('id, curso_id, nome, ordem, miniatura_url, drive_url, mega_url, outro_url')
                     .single();
 
                 if (error) throw error;
 
                 if (data) {
-                    apostilas.value.push(data);
+                    const baseDestino = [...itensDestinoAtual, data];
+                    const destinoReposicionado = posicionarItemPorNumero(baseDestino, data.id, ordemDesejada);
+                    const { listaNormalizada, alteracoes } = calcularNormalizacaoOrdem(destinoReposicionado);
+
+                    if (alteracoes.length > 0) {
+                        await persistirAlteracoesOrdem(alteracoes);
+                    }
+
+                    substituirGruposLocalmente([chaveDestino], listaNormalizada);
                 }
 
                 toast.success('Sucesso', 'Apostila cadastrada com sucesso!');
@@ -308,17 +542,27 @@
 
         excluindo.value = true;
         try {
+            const idRemovido = apostilaParaExcluir.value.id;
+            const nomeRemovido = apostilaParaExcluir.value.nome;
+            const chaveGrupo = getChaveCurso(apostilaParaExcluir.value.curso_id);
+
             const { error } = await supabase
                 .from('apostila')
                 .delete()
-                .eq('id', apostilaParaExcluir.value.id);
+                .eq('id', idRemovido);
 
             if (error) throw error;
 
-            const nomeRemovido = apostilaParaExcluir.value.nome;
-            apostilas.value = apostilas.value.filter(
-                item => item.id !== apostilaParaExcluir.value.id
+            const restantesGrupo = obterApostilasDoGrupo(chaveGrupo).filter(
+                item => item.id !== idRemovido
             );
+            const { listaNormalizada, alteracoes } = calcularNormalizacaoOrdem(restantesGrupo);
+
+            if (alteracoes.length > 0) {
+                await persistirAlteracoesOrdem(alteracoes);
+            }
+
+            substituirGruposLocalmente([chaveGrupo], listaNormalizada);
 
             toast.success('Excluída', `A apostila "${nomeRemovido}" foi removida.`);
             modalExcluirAberto.value = false;
@@ -339,7 +583,7 @@
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'apostila' },
-                () => carregarApostilas(true)
+                () => agendarRecarregamentoRealtime()
             )
             .on(
                 'postgres_changes',
@@ -350,6 +594,7 @@
     });
 
     onUnmounted(() => {
+        clearTimeout(realtimeTimer);
         if (realtimeChannel) {
             supabase.removeChannel(realtimeChannel);
         }
@@ -447,18 +692,47 @@
                         <div class="overflow-hidden">
                             <div class="border-t border-border bg-background">
                                 <div class="hidden md:flex items-center gap-4 px-4 py-2.5 pl-12 border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
+                                    <div class="w-16 text-center">Ordem</div>
                                     <div class="flex-1">Nome da Apostila</div>
-                                    <div class="w-24 text-center">Drive</div>
-                                    <div class="w-24 text-center">Mega</div>
-                                    <div class="w-24 text-center">Outro</div>
+                                    <div class="w-16 text-center">Drive</div>
+                                    <div class="w-16 text-center">Mega</div>
+                                    <div class="w-16 text-center">Outro</div>
                                     <div class="w-16 text-center">Ações</div>
                                 </div>
 
                                 <div
-                                    v-for="item in grupo.itens"
+                                    v-for="(item, index) in grupo.itens"
                                     :key="item.id"
+                                    :draggable="podeReordenarGrupo(grupo)"
                                     class="border-b border-border last:border-0 flex items-center justify-between gap-2 md:gap-4 p-3 md:px-4 md:py-3 md:pl-12 hover:bg-muted/40 transition-colors"
+                                    :class="[
+                                        dragOrigem?.grupoId === grupo.id && dragOrigem?.index === index
+                                            ? 'opacity-40 bg-muted/60'
+                                            : '',
+                                        dragAlvo?.grupoId === grupo.id &&
+                                        dragAlvo?.index === index &&
+                                        dragOrigem?.index !== index
+                                            ? 'ring-2 ring-inset ring-indigo-500/60 bg-indigo-50/40 dark:bg-indigo-500/10'
+                                            : ''
+                                    ]"
+                                    @dragstart="onDragStart(grupo, index, $event)"
+                                    @dragover="onDragOver(grupo.id, index, $event)"
+                                    @drop="onDrop(grupo.id, index, $event)"
+                                    @dragend="onDragEnd"
                                 >
+                                    <!-- Controles de Ordem Compacto -->
+                                    <div class="md:w-16 flex justify-center shrink-0">
+                                        <ControleOrdem
+                                            :ordem="item.ordem || index + 1"
+                                            :desabilitado="!podeReordenarGrupo(grupo)"
+                                            :pode-subir="index > 0"
+                                            :pode-descer="index < grupo.itens.length - 1"
+                                            :titulo-arrastar="termoPesquisa ? 'Limpe a busca para reordenar' : 'Arraste para reordenar neste curso'"
+                                            @subir="moverApostila(grupo.id, index, -1)"
+                                            @descer="moverApostila(grupo.id, index, 1)"
+                                        />
+                                    </div>
+
                                     <div class="flex items-center gap-3 flex-1 min-w-0">
                                         <div class="w-10 h-10 rounded-md border border-border bg-muted/50 overflow-hidden flex items-center justify-center shrink-0">
                                             <img
@@ -478,74 +752,23 @@
                                             </span>
 
                                             <div class="md:hidden flex flex-wrap items-center gap-1.5 mt-2">
-                                                <a
-                                                    v-if="item.drive_url"
-                                                    :href="item.drive_url"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                                                >
-                                                    Drive
-                                                </a>
-                                                <a
-                                                    v-if="item.mega_url"
-                                                    :href="item.mega_url"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                                                >
-                                                    Mega
-                                                </a>
-                                                <a
-                                                    v-if="item.outro_url"
-                                                    :href="item.outro_url"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                                                >
-                                                    Outro
-                                                </a>
+                                                <BotaoCanalLink tipo="drive" :url="item.drive_url" mostrar-label />
+                                                <BotaoCanalLink tipo="mega" :url="item.mega_url" mostrar-label />
+                                                <BotaoCanalLink tipo="outro" :url="item.outro_url" mostrar-label />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="hidden md:flex w-24 justify-center shrink-0">
-                                        <a
-                                            v-if="item.drive_url"
-                                            :href="item.drive_url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="inline-flex items-center justify-center rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-xs"
-                                        >
-                                            Abrir
-                                        </a>
-                                        <span v-else class="text-sm text-muted-foreground/50">—</span>
+                                    <div class="hidden md:flex w-16 justify-center shrink-0">
+                                        <BotaoCanalLink tipo="drive" :url="item.drive_url" />
                                     </div>
 
-                                    <div class="hidden md:flex w-24 justify-center shrink-0">
-                                        <a
-                                            v-if="item.mega_url"
-                                            :href="item.mega_url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="inline-flex items-center justify-center rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-xs"
-                                        >
-                                            Abrir
-                                        </a>
-                                        <span v-else class="text-sm text-muted-foreground/50">—</span>
+                                    <div class="hidden md:flex w-16 justify-center shrink-0">
+                                        <BotaoCanalLink tipo="mega" :url="item.mega_url" />
                                     </div>
 
-                                    <div class="hidden md:flex w-24 justify-center shrink-0">
-                                        <a
-                                            v-if="item.outro_url"
-                                            :href="item.outro_url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="inline-flex items-center justify-center rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-xs"
-                                        >
-                                            Abrir
-                                        </a>
-                                        <span v-else class="text-sm text-muted-foreground/50">—</span>
+                                    <div class="hidden md:flex w-16 justify-center shrink-0">
+                                        <BotaoCanalLink tipo="outro" :url="item.outro_url" />
                                     </div>
 
                                     <div class="w-auto md:w-16 flex justify-center shrink-0">
@@ -593,20 +816,37 @@
             <div class="space-y-4 p-2">
                 <FormGroup label="Curso" id="apo-curso">
                     <Select
-                        v-model="form.curso_id"
+                        :model-value="form.curso_id"
                         :options="opcoesCursoModal"
                         :disabled="salvando"
+                        @update:model-value="aoTrocarCursoModal"
                     />
                 </FormGroup>
 
-                <FormGroup label="Nome *" id="apo-nome">
-                    <Input
-                        v-model="form.nome"
-                        placeholder="Ex: Módulo 1 - Introdução ao Excel"
-                        :disabled="salvando"
-                        @keyup.enter="salvarApostila"
-                    />
-                </FormGroup>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div class="sm:col-span-3">
+                        <FormGroup label="Nome *" id="apo-nome">
+                            <Input
+                                v-model="form.nome"
+                                placeholder="Ex: Módulo 1 - Introdução ao Excel"
+                                :disabled="salvando"
+                                @keyup.enter="salvarApostila"
+                            />
+                        </FormGroup>
+                    </div>
+
+                    <div class="sm:col-span-1">
+                        <FormGroup label="Ordem" id="apo-ordem">
+                            <Input
+                                v-model="form.ordem"
+                                type="number"
+                                min="1"
+                                :disabled="salvando"
+                                @keyup.enter="salvarApostila"
+                            />
+                        </FormGroup>
+                    </div>
+                </div>
 
                 <FormGroup label="Link da Miniatura (Opcional)" id="apo-miniatura">
                     <Input

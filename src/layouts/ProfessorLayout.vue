@@ -49,7 +49,7 @@ const navigation = [
         icon: ListPlus,
     },
     {
-        title: 'Gestão de Conteúdo (TESTE)',
+        title: 'Gestão de Conteúdo',
         to: '/professor/gestao-de-conteudo',
         icon: FolderCog,
     },

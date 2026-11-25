@@ -7,7 +7,7 @@ export function useRealtime() {
     const iniciarConexaoGlobal = () => {
         if (canalMestreAtivo) return;
 
-        console.log("Iniciando canal Realtime Mestre...");
+        // console.log("Iniciando canal Realtime Mestre...");
 
         const token = sessionStorage.getItem('token_acesso');
         if (token) {
@@ -39,7 +39,7 @@ export function useRealtime() {
             })
             .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log("Conexão Realtime Autenticada e Unificada estabelecida com sucesso!");
+                    // console.log("Conexão Realtime Autenticada e Unificada estabelecida com sucesso!");
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                     console.error("Erro no Realtime Mestre:", status, err);
                 }
