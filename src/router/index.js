@@ -27,11 +27,18 @@ const routes = [
     },
     {
         path: '/test',
-        component: () => import('@/views/Test.vue')
+        component: () => import('@/views/Test.vue'),
     },
 
     // Rotas de Autenticação
     { path: '/login', component: () => import('../views/Login.vue') },
+
+    // Área pública de prática da primeira aula (sem necessidade de login)
+    {
+        path: '/primeira-aula',
+        name: 'primeira-aula',
+        component: () => import('@/modules/primeira-aula/views/PrimeiraAula.vue'),
+    },
 
     // Rota Temporária para Testes
     { path: '/seed', component: () => import('../views/SeedData.vue') },

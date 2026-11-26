@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { Key, LogIn, Loader2, AlertCircle } from '@lucide/vue'
 import { supabase } from '@/lib/supabase'
 
@@ -37,11 +37,11 @@ const handleLogin = async () => {
                 const jsonString = decodeURIComponent(
                     atob(base64)
                         .split('')
-                        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
                         .join('')
                 )
                 const payload = JSON.parse(jsonString)
-                
+
                 if (payload?.nome) {
                     sessionStorage.setItem('nome_usuario', payload.nome)
                 }
@@ -72,7 +72,7 @@ const handleLogin = async () => {
         <div class="w-full max-w-[380px] space-y-6">
             <div class="flex flex-col items-center text-center space-y-2">
                 <div class="w-12 h-12 flex items-center justify-center">
-                    <img :src="Logo" alt="">
+                    <img :src="Logo" alt="Logo Nexo" />
                 </div>
                 <h1 class="text-2xl font-bold tracking-tight text-foreground">
                     Portal de Acesso
@@ -123,6 +123,17 @@ const handleLogin = async () => {
                     </button>
                 </form>
             </div>
+
+            <!-- Acesso discreto para a prática da primeira aula -->
+            <p class="text-center text-xs text-muted-foreground">
+                Primeira aula?
+                <RouterLink
+                    to="/primeira-aula"
+                    class="ml-1 font-medium text-foreground/80 hover:text-indigo-600 dark:hover:text-indigo-400 underline underline-offset-4 transition-colors"
+                >
+                    Praticar mouse e teclado
+                </RouterLink>
+            </p>
         </div>
     </div>
 </template>
