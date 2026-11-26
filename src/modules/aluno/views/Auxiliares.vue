@@ -145,18 +145,18 @@
             </CardContent>
         </Card>
 
-        <!-- Grade de Arquivos Auxiliares -->
+        <!-- Grade Compacta de Arquivos Auxiliares (Horizontal no celular / 4 colunas no PC) -->
         <div
             v-else
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
         >
             <article
                 v-for="item in arquivosFiltrados"
                 :key="item.id"
-                class="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+                class="flex flex-row sm:flex-col items-center sm:items-stretch overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-shadow hover:shadow-sm"
             >
                 <!-- Miniatura -->
-                <div class="relative aspect-[16/10] w-full bg-muted/50 border-b border-border overflow-hidden">
+                <div class="relative w-28 sm:w-full aspect-[16/10] ml-2.5 my-2.5 sm:m-0 rounded-lg sm:rounded-none bg-muted/50 sm:border-b border-border overflow-hidden shrink-0">
                     <img
                         v-if="item.miniatura_url && !imagensComErro.has(item.id)"
                         :src="item.miniatura_url"
@@ -169,13 +169,13 @@
                         v-else
                         class="flex h-full w-full items-center justify-center text-muted-foreground/35"
                     >
-                        <FolderOpen class="w-10 h-10" />
+                        <FolderOpen class="w-7 h-7 sm:w-8 sm:h-8" />
                     </div>
                 </div>
 
-                <!-- Nome + Botoes de acesso -->
-                <div class="flex flex-1 flex-col p-4 gap-3.5">
-                    <h2 class="font-bold text-sm sm:text-[15px] text-foreground leading-snug line-clamp-2">
+                <!-- Nome + Botoes compactos -->
+                <div class="flex flex-1 flex-col min-w-0 p-2.5 sm:p-3 gap-2 sm:gap-2.5">
+                    <h2 class="font-semibold text-[13px] sm:text-sm text-foreground leading-snug line-clamp-2">
                         {{ item.nome }}
                     </h2>
 
@@ -185,27 +185,27 @@
                             :href="item.canais[0].url"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="flex items-center justify-center gap-2 h-10 w-full rounded-lg bg-primary text-primary-foreground font-medium text-xs sm:text-sm hover:opacity-95 transition-opacity active:scale-[0.99]"
+                            class="flex items-center justify-center gap-1.5 h-8 w-full px-2.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors active:scale-[0.98]"
                         >
                             <img
                                 v-if="item.canais[0].tipo === 'drive'"
                                 :src="googleDriveIcon"
                                 alt="Google Drive"
-                                class="w-4 h-4 object-contain shrink-0"
+                                class="w-3.5 h-3.5 object-contain shrink-0"
                             />
                             <img
                                 v-else-if="item.canais[0].tipo === 'mega'"
                                 :src="megaLogoIcon"
                                 alt="Mega"
-                                class="w-4 h-4 object-contain shrink-0"
+                                class="w-3.5 h-3.5 object-contain shrink-0"
                             />
-                            <ExternalLink v-else class="w-4 h-4 shrink-0" />
-                            <span>{{ item.canais[0].label }}</span>
+                            <ExternalLink v-else class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span class="truncate">{{ item.canais[0].label }}</span>
                         </a>
 
                         <div
                             v-else
-                            class="grid gap-2"
+                            class="grid gap-1.5"
                             :class="item.canais.length === 2 ? 'grid-cols-2' : 'grid-cols-3'"
                         >
                             <a
@@ -214,19 +214,19 @@
                                 :href="canal.url"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="flex items-center justify-center gap-1.5 h-10 px-2.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors active:scale-[0.98]"
+                                class="flex items-center justify-center gap-1.5 h-8 px-2 rounded-lg border border-border bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors active:scale-[0.98]"
                             >
                                 <img
                                     v-if="canal.tipo === 'drive'"
                                     :src="googleDriveIcon"
                                     alt="Google Drive"
-                                    class="w-4 h-4 object-contain shrink-0"
+                                    class="w-3.5 h-3.5 object-contain shrink-0"
                                 />
                                 <img
                                     v-else-if="canal.tipo === 'mega'"
                                     :src="megaLogoIcon"
                                     alt="Mega"
-                                    class="w-4 h-4 object-contain shrink-0"
+                                    class="w-3.5 h-3.5 object-contain shrink-0"
                                 />
                                 <ExternalLink v-else class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                 <span class="truncate">{{ canal.curto }}</span>
